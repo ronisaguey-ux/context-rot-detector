@@ -20,6 +20,15 @@ An architecture-calibrated behavioral telemetry and compaction-threshold optimiz
    - **Coarse `task_type` Tagging**: Tags each session from its opening user message (`refactor`, `bugfix`, `feature`, `test`, `explore`) and outputs stratified curves (`outputs/task_type_curves.csv`).
 6. **Inversion-Safe OpenCode Config Output (P4)**: Verified against [OpenCode V2 Compaction Docs](https://opencode.ai/v2/docs/compaction/): OpenCode uses `compaction.buffer` (tokens kept free *below* the model context limit), so `buffer = model_context_window - threshold_T` (`900,000 - T`), preventing catastrophic inversion.
 
+## Which sessions it sees
+
+It reads the OpenCode store the serve writes (`~/.local/share/opencode/opencode.db`). That store holds **one** row per session for the whole stack, so every agent's pane is covered by one run — Gideon, Felicity, Gary, Frank, George, Jimmy, Mick, plus non-agent sessions.
+
+Two schema notes, both learned the hard way:
+
+- The live store is **V2**: sessions in `session_v2`, messages in `session_message` (one JSON row per message, 26k+ rows on this box). The V1 tables (`session`/`message`/`part`) still exist but hold a stale subset — reading only those made the detector blind to most agents. `export_v2_as_v1()` projects the V2 rows into the V1 shape before reading, so the rest of the pipeline is unchanged.
+- Context fill comes from the **provider-reported input token count** when a message carries one. A text-length estimate undercounts badly: it ignores tool schemas, instruction files and the system prompt, which is most of a real agent's context.
+
 ## Quick Start
 
 ```bash
