@@ -1,0 +1,50 @@
+{
+  "all_passed": true,
+  "passed_count": 5,
+  "total_checks": 5,
+  "checks": [
+    {
+      "check": "5.1 Null Model Shuffle Test",
+      "passed": true,
+      "original_slope_pts_per_5k": 4.73,
+      "shuffled_abs_slope_pts_per_5k": 0.09,
+      "details": "Original curve slope = +4.73 pts/5k; after shuffling step labels within epoch, mean |slope| collapsed to 0.09 pts/5k (zero bucket-index leakage)."
+    },
+    {
+      "check": "5.1 Spot-Check Transcript Audit (3 >700, 3 <100)",
+      "passed": true,
+      "agreements": "6/6",
+      "disagreement_rate": 0.0,
+      "details": "Inspected 3 buckets >700 and 3 buckets <100 (6/6 aligned with transcript evidence; disagreement rate = 0.0% <= 30% threshold)."
+    },
+    {
+      "check": "5.1 Determinism & Stability Test (2x Rerun)",
+      "passed": true,
+      "run1_sha256": "ea5e6a11a416aec0",
+      "run2_sha256": "ea5e6a11a416aec0",
+      "details": "Identical SHA-256 digest (ea5e6a11a416aec0) across consecutive runs; recommended T = 215,000 tokens with 0.0 float drift."
+    },
+    {
+      "check": "5.2 External Reference Precision@5",
+      "passed": true,
+      "precision_at_5": 1.0,
+      "top5_sessions": [
+        "sess_14_offrails_refactor",
+        "sess_07_offrails_bugfix",
+        "sess_07_offrails_bugfix",
+        "sess_07_offrails_bugfix",
+        "sess_11_offrails_feature"
+      ],
+      "details": "Precision@5 = 100% (5/5 top-scoring buckets belong to verified off-rails sessions: ['sess_03_offrails_refactor', 'sess_07_offrails_bugfix', 'sess_11_offrails_feature', 'sess_14_offrails_refactor'])."
+    },
+    {
+      "check": "5.3 Bootstrap Score & Knee Threshold Stability",
+      "passed": true,
+      "mean_abs_curve_score_diff": 28.3,
+      "bootstrap_threshold_tokens": 215000,
+      "empirical_threshold_tokens": 215000,
+      "delta_threshold_tokens": 0,
+      "details": "Curve mean score delta = 28.3 pts (1-1000 scale); Knee threshold T_bootstrap=215,000 vs T_empirical=215,000 (Delta T = 0 tokens <= 20k limit)."
+    }
+  ]
+}
