@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Context Rot Detector V2 — 900k Architecture, AGENTS.md &amp; Memory-Gate Report</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-alt: #263449;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-green: #22c55e;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-purple: #a855f7;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      --mono: "JetBrains Mono", "Fira Code", Consolas, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.55;
+      padding: 2rem;
+    }
+    .container { max-width: 1320px; margin: 0 auto; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.25rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    header h1 { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.02em; }
+    header p { color: var(--muted); font-size: 0.92rem; margin-top: 0.25rem; }
+    .badge {
+      display: inline-block;
+      padding: 0.35rem 0.8rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--accent-green);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+    }
+    .alert-banner {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.5);
+      color: #fde68a;
+      padding: 0.9rem 1.2rem;
+      border-radius: 0.6rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.1rem 1.2rem;
+    }
+    .kpi-label {
+      color: var(--muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+    .kpi-value {
+      font-size: 1.55rem;
+      font-weight: 700;
+      margin: 0.3rem 0;
+      font-family: var(--mono);
+    }
+    .kpi-sub { color: var(--muted); font-size: 0.8rem; }
+    .highlight-green { color: var(--accent-green); }
+    .highlight-amber { color: var(--accent-amber); }
+    .highlight-red { color: var(--accent-red); }
+    .highlight-blue { color: var(--accent); }
+    .highlight-purple { color: var(--accent-purple); }
+    .section-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+    .section-title {
+      font-size: 1.12rem;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .section-desc { color: var(--muted); font-size: 0.86rem; margin-bottom: 1.15rem; }
+    .chart-box {
+      width: 100%;
+      background: #0b1120;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      overflow-x: auto;
+    }
+    svg { width: 100%; height: auto; display: block; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    th, td { padding: 0.6rem 0.7rem; border-bottom: 1px solid var(--border); text-align: left; }
+    th {
+      background: var(--surface-alt);
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+    }
+    td.num, th.num { text-align: right; font-family: var(--mono); }
+    tr.row-highlight { background: rgba(34, 197, 94, 0.14); }
+    tr.row-default { background: rgba(239, 68, 68, 0.1); }
+    .tier-pill {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      font-family: var(--mono);
+    }
+    .tier-arch { background: rgba(168, 85, 247, 0.25); color: #e9d5ff; border: 1px solid rgba(168,85,247,0.4); }
+    .tier-1 { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+    .tier-2 { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+    .tier-3 { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; }
+    .tier-side { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+    .config-box {
+      background: #0b1120;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 1rem 1.2rem;
+      font-family: var(--mono);
+      font-size: 0.83rem;
+      color: #e2e8f0;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 960px) { .two-col { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Context Rot Detector V2 — Architecture-Calibrated Compaction Report</h1>
+        <p>15 Signals (AGENTS.md + Memory-Gate + Recovery Ratio) &bull; Bucketed on <code>tokens_since_compaction</code> &bull; 900k Window</p>
+      </div>
+      <div>
+        <span class="badge">Target Trigger T = {{ (onset.recommended_compaction_tokens // 1000) }}k &bull; OpenCode buffer = {{ (onset.opencode_v2_buffer_tokens // 1000) }}k</span>
+      </div>
+    </header>
+
+    {% if onset.guard_warning %}
+    <div class="alert-banner">
+      <strong>Guard Diagnostic:</strong> {{ onset.guard_warning }}
+    </div>
+    {% endif %}
+
+    <!-- Top KPI Grid -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Recommended Compaction Trigger (T)</div>
+        <div class="kpi-value highlight-green">{{ "{:,}".format(onset.recommended_compaction_tokens) }}</div>
+        <div class="kpi-sub">Bucket #{{ onset.recommended_bucket }} ({{ onset.binding_method }})</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">OpenCode V2 <code>compaction.buffer</code></div>
+        <div class="kpi-value highlight-blue">{{ "{:,}".format(onset.opencode_v2_buffer_tokens) }}</div>
+        <div class="kpi-sub"><code>{{ "{:,}".format(onset.model_context_window) }} window - {{ "{:,}".format(onset.recommended_compaction_tokens) }} T</code></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Compaction Recovery Knee (s15)</div>
+        <div class="kpi-value highlight-purple">
+          {% if onset.recovery_knee_tokens %}{{ "{:,}".format(onset.recovery_knee_tokens) }}{% else %}N/A{% endif %}
+        </div>
+        <div class="kpi-sub">Fill where <code>post_rot / pre_rot &gt; 0.65</code></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Memory-Gate Failure Onset (s14c)</div>
+        <div class="kpi-value highlight-amber">
+          {% if onset.state_save_failure_tokens %}{{ "{:,}".format(onset.state_save_failure_tokens) }}{% else %}N/A{% endif %}
+        </div>
+        <div class="kpi-sub">Fill where pre-compaction facts fail to save</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Slope Knee / P90 &gt; {{ onset.p90_threshold_value|int }}</div>
+        <div class="kpi-value highlight-red">
+          {% if onset.slope_onset_tokens %}{{ onset.slope_onset_tokens // 1000 }}k{% else %}N/A{% endif %} /
+          {% if onset.p90_onset_tokens %}{{ onset.p90_onset_tokens // 1000 }}k{% else %}N/A{% endif %}
+        </div>
+        <div class="kpi-sub">Guard: <code>--min-fill-tokens {{ onset.min_fill_tokens_guard // 1000 }}k</code></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Max Context Fill Reached</div>
+        <div class="kpi-value">{{ max_context_k }}k / {{ max_cum_k }}k</div>
+        <div class="kpi-sub"><code>tokens_since_compaction</code> / raw cumulative</div>
+      </div>
+    </div>
+
+    <!-- Chart 1: Aggregate Context Rot Curve on tokens_since_compaction -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>1. Aggregate Context Rot Curve vs. <code>tokens_since_compaction</code> (n_steps-Weighted)</span>
+        <span style="font-size: 0.8rem; color: var(--muted);">Hard-Failure Floor requires &ge;2 s1/s2 fires &bull; Filtered for Bucket Confidence (n &ge; 10)</span>
+      </div>
+      <p class="section-desc">
+        Every step is bucketed by <code>tokens_since_compaction</code> (5k windows) so post-compaction resets are never confounded with cold-start tokens. Vertical markers highlight the Slope Knee, P90 &gt; 400 crossing, and Compaction Recovery Knee.
+      </p>
+      <div class="chart-box">
+        <svg id="rot-curve-svg" viewBox="0 0 960 350"></svg>
+      </div>
+    </div>
+
+    <!-- Chart 2: Signal 15 Compaction Recovery Ratio & Signal 14c Stratified Post-Compaction Curves -->
+    <div class="two-col">
+      <div class="section-card">
+        <div class="section-title">
+          <span>2. Signal 15 — Compaction Recovery Ratio vs. Fill at Compaction</span>
+        </div>
+        <p class="section-desc">
+          Plots <code>recovery_ratio = post_compaction_rot_score / pre_compaction_rot_score</code> against <code>tokens_at_compaction</code>. Below the recovery knee, compaction restores clean state (ratio &lt; 0.45); past the knee, compaction fails to recover usable context.
+        </p>
+        <div class="chart-box" style="margin-bottom: 1rem;">
+          <svg id="recovery-svg" viewBox="0 0 460 270"></svg>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Fill at Compaction</th>
+              <th class="num">Events</th>
+              <th class="num">Pre Score</th>
+              <th class="num">Post Score</th>
+              <th class="num">Recovery Ratio</th>
+              <th class="num">14c Lost %</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in recovery_summary %}
+            <tr>
+              <td style="font-family: var(--mono); font-weight: 600;">{{ r.tokens_at_compaction_k }}k</td>
+              <td class="num">{{ r.n_compactions }}</td>
+              <td class="num">{{ "%.1f"|format(r.mean_pre_rot_score) }}</td>
+              <td class="num">{{ "%.1f"|format(r.mean_post_rot_score) }}</td>
+              <td class="num {% if r.mean_recovery_ratio > 0.65 %}highlight-red{% else %}highlight-green{% endif %}">{{ "%.2f"|format(r.mean_recovery_ratio) }}</td>
+              <td class="num">{{ "%.0f%%"|format(r.lost_state_fraction * 100) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section-card">
+        <div class="section-title">
+          <span>3. Post-Compaction Stratification by Signal 14c (Memory Gate Outcome)</span>
+        </div>
+        <p class="section-desc">
+          Compares post-compaction trajectories when the agent saved candidate facts before the memory gate closed (<strong>Saved State OK</strong>, green) vs. when candidate facts were lost across compaction (<strong>Lost State Before Gate</strong>, red).
+        </p>
+        <div class="chart-box" style="margin-bottom: 1rem;">
+          <svg id="strat-14c-svg" viewBox="0 0 460 270"></svg>
+        </div>
+        <p style="font-size: 0.82rem; color: var(--muted);">
+          <strong>Key Finding:</strong> Sessions that fail Signal 14c (lose candidate facts across compaction) start their post-compaction epoch at elevated rot and degrade rapidly, confirming that <em>memory-gate preservation threshold</em> is binding.
+        </p>
+      </div>
+    </div>
+
+    <!-- Section 4: Per-Signal Onset Table (15 Signals / 17 Evaluators) -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>4. Architecture-Calibrated Signal Breakdown (Signals 1–15, W = 14.8)</span>
+        <span style="font-size: 0.8rem; color: var(--accent);">{{ per_signal.diagnostic }}</span>
+      </div>
+      <p class="section-desc">
+        <code>s13</code> (AGENTS.md failure, weight 1.5), <code>s15</code> (Compaction recovery failure, weight 1.3), <code>s14c</code> (Lost memory write, weight 1.2), and <code>s1–s4</code> (Tier 1 tool/edit failures, weight 1.3) carry the primary weight, while <code>s9</code> and <code>s10</code> are down-weighted to 0.3.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Signal</th>
+            <th>Name &amp; Logic</th>
+            <th>Tier</th>
+            <th>Type</th>
+            <th class="num">Weight</th>
+            <th class="num">P95 Baseline</th>
+            <th class="num">Early Rate</th>
+            <th class="num">Peak Rate</th>
+            <th class="num">Onset Fill</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in per_signal.signals %}
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">{{ s.id|upper }}</td>
+            <td>
+              <strong>{{ s.name }}</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">{{ s.desc }}</div>
+            </td>
+            <td>
+              <span class="tier-pill {% if 'Arch' in s.tier or 'Memory' in s.tier %}tier-arch{% elif s.tier == 'Tier 1' %}tier-1{% elif s.tier == 'Tier 2' %}tier-2{% elif s.tier == 'Tier 3' %}tier-3{% else %}tier-side{% endif %}">
+                {{ s.tier }}
+              </span>
+            </td>
+            <td style="color: var(--muted);">{{ s.type }}</td>
+            <td class="num">{{ "%.1f"|format(s.weight) }}</td>
+            <td class="num">{{ "%.3f"|format(s.baseline_p95) }}</td>
+            <td class="num">{{ "%.3f"|format(s.early_mean_rate) }}</td>
+            <td class="num">{{ "%.3f"|format(s.peak_rate) }}</td>
+            <td class="num">
+              {% if s.onset_tokens_k is not none %}
+                <span class="highlight-amber">{{ s.onset_tokens_k }}k</span> (b={{ s.onset_bucket }})
+              {% else %}
+                <span style="color: var(--muted);">Stable</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Section 5: Real Cache-Miss Cost vs Quality Trade-Off & Task-Type Stratification -->
+    <div class="two-col">
+      <div class="section-card">
+        <div class="section-title">
+          <span>5. Prompt-Cache Cost vs. Rot Score Trade-Off (Real Usage Telemetry)</span>
+        </div>
+        <p class="section-desc">
+          Priced at <code>${{ pricing.cached }}/MTok</code> cached input, <code>${{ pricing.uncached }}/MTok</code> uncached input, and <code>${{ pricing.output }}/MTok</code> output using captured <code>prompt_cache_hit_tokens</code> and <code>prompt_cache_miss_tokens</code>.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Trigger T</th>
+              <th class="num">Buffer</th>
+              <th class="num">Cache Miss (M)</th>
+              <th class="num">Total Cost</th>
+              <th class="num">Mean Score</th>
+              <th class="num">P90 Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in tradeoff %}
+            <tr class="{% if row.is_recommended %}row-highlight{% elif row.is_opencode_default %}row-default{% endif %}">
+              <td style="font-family: var(--mono); font-weight: 600;">
+                {{ row.threshold_k }}k
+                {% if row.is_recommended %}<span class="badge" style="padding: 0.08rem 0.4rem; font-size: 0.68rem;">OPTIMAL</span>{% endif %}
+                {% if row.is_opencode_default %}<span style="color: var(--accent-red); font-size: 0.7rem;">(No-Compact 900k)</span>{% endif %}
+              </td>
+              <td class="num">{{ row.opencode_buffer_k }}k</td>
+              <td class="num">{{ "%.2f"|format(row.prompt_cache_miss_tokens_m) }}M</td>
+              <td class="num">${{ "%.2f"|format(row.total_cost_usd) }}</td>
+              <td class="num">{{ "%.1f"|format(row.mean_score_after_compaction) }}</td>
+              <td class="num">{{ "%.1f"|format(row.p90_score_after_compaction) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section-card">
+        <div class="section-title">
+          <span>6. Task-Type Stratified Rot Curves (First User Message Tagging)</span>
+        </div>
+        <p class="section-desc">
+          Sessions are tagged from their opening prompt into <code>refactor</code>, <code>bugfix</code>, <code>feature</code>, <code>test</code>, or <code>explore</code> to separate task difficulty from context fill.
+        </p>
+        <div class="chart-box">
+          <svg id="task-type-svg" viewBox="0 0 460 290"></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 7: Verified OpenCode Config Snippet (Inversion-Safe buffer = window - T) -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>7. Verified OpenCode Configuration (Inversion-Safe <code>buffer = model_window - T</code>)</span>
+        <span style="font-size: 0.8rem; color: var(--accent-amber);">IMPORTANT: OpenCode uses a free-token buffer below the model limit, NOT an absolute maxContextTokens key</span>
+      </div>
+      <p class="section-desc">
+        In OpenCode V2 (<code>https://opencode.ai/v2/docs/compaction/</code>), <code>compaction.buffer</code> specifies the <strong>tokens to keep free below the model's context limit</strong> (`trigger = model_context_window - buffer`). For your <strong>{{ "{:,}".format(onset.model_context_window) }}-token window</strong> and recommended compaction trigger <strong>T = {{ "{:,}".format(onset.recommended_compaction_tokens) }} tokens</strong>, set <code>buffer = {{ "{:,}".format(onset.model_context_window) }} - {{ "{:,}".format(onset.recommended_compaction_tokens) }} = {{ "{:,}".format(onset.opencode_v2_buffer_tokens) }}</code>:
+      </p>
+      <div class="two-col">
+        <div>
+          <div style="font-size: 0.8rem; color: var(--accent-green); font-weight: 600; margin-bottom: 0.4rem;">OpenCode V2 (<code>opencode.jsonc</code> — Current Standard)</div>
+          <div class="config-box">{
+  "$schema": "https://opencode.ai/config.json",
+  "compaction": {
+    "auto": true,
+    "keep": {
+      "tokens": 15000
+    },
+    "buffer": {{ onset.opencode_v2_buffer_tokens }}
+  }
+}</div>
+        </div>
+        <div>
+          <div style="font-size: 0.8rem; color: var(--muted); font-weight: 600; margin-bottom: 0.4rem;">OpenCode V1 Legacy (<code>compaction.reserved</code>)</div>
+          <div class="config-box">{
+  "$schema": "https://opencode.ai/config.json",
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": {{ onset.opencode_v2_buffer_tokens }}
+  }
+}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const curveData = {{ curve_json }};
+    const recoveryData = {{ recovery_json }};
+    const strat14cData = {{ strat_14c_json }};
+    const taskTypeData = {{ task_type_json }};
+    const onsetInfo = {{ onset_json }};
+
+    // Chart 1: Main Rot Curve vs tokens_since_compaction
+    (function renderMainCurve() {
+      const svg = document.getElementById("rot-curve-svg");
+      if (!svg || !curveData.length) return;
+      const W = 960, H = 350;
+      const pad = { top: 28, right: 35, bottom: 44, left: 58 };
+      const plotW = W - pad.left - pad.right;
+      const plotH = H - pad.top - pad.bottom;
+
+      const maxK = Math.max(...curveData.map(d => d.tokens_since_compaction_k), 50);
+      const minK = Math.min(...curveData.map(d => d.tokens_since_compaction_k), 0);
+      const xSpan = Math.max(maxK - minK, 10);
+
+      const xPos = (k) => pad.left + ((k - minK) / xSpan) * plotW;
+      const yPos = (s) => pad.top + plotH - (Math.min(Math.max(s, 0), 1000) / 1000) * plotH;
+
+      let html = "";
+      [0, 200, 400, 600, 800, 1000].forEach(val => {
+        const y = yPos(val);
+        const is400 = (val === onsetInfo.p90_threshold_value);
+        html += `<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" stroke="${is400 ? '#ef4444' : '#1e293b'}" stroke-dasharray="${is400 ? '5,4' : 'none'}" />`;
+        html += `<text x="${pad.left - 8}" y="${y + 4}" text-anchor="end" fill="#94a3b8" font-size="11" font-family="monospace">${val}</text>`;
+      });
+
+      const stepStride = Math.max(1, Math.floor(curveData.length / 12));
+      curveData.forEach((d, idx) => {
+        if (idx % stepStride === 0 || idx === curveData.length - 1) {
+          const x = xPos(d.tokens_since_compaction_k);
+          html += `<line x1="${x}" y1="${pad.top}" x2="${x}" y2="${pad.top + plotH}" stroke="#1e293b" />`;
+          html += `<text x="${x}" y="${H - 14}" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="monospace">${d.tokens_since_compaction_k}k</text>`;
+        }
+      });
+
+      if (curveData.length > 1) {
+        const topPts = curveData.map(d => `${xPos(d.tokens_since_compaction_k)},${yPos(d.p90)}`).join(" ");
+        const botPts = [...curveData].reverse().map(d => `${xPos(d.tokens_since_compaction_k)},${yPos(d.p50)}`).join(" ");
+        html += `<polygon points="${topPts} ${botPts}" fill="rgba(239, 68, 68, 0.15)" />`;
+      }
+
+      if (onsetInfo.recommended_compaction_tokens) {
+        const rk = onsetInfo.recommended_compaction_tokens / 1000;
+        const rx = xPos(rk);
+        html += `<line x1="${rx}" y1="${pad.top}" x2="${rx}" y2="${pad.top + plotH}" stroke="#22c55e" stroke-width="2.5" stroke-dasharray="6,4" />`;
+        html += `<text x="${rx + 6}" y="${pad.top + 16}" fill="#22c55e" font-size="12" font-weight="bold">Recommended T = ${rk}k</text>`;
+      }
+
+      if (onsetInfo.recovery_knee_tokens) {
+        const ck = onsetInfo.recovery_knee_tokens / 1000;
+        const cx = xPos(ck);
+        html += `<line x1="${cx}" y1="${pad.top}" x2="${cx}" y2="${pad.top + plotH}" stroke="#a855f7" stroke-width="2" stroke-dasharray="3,3" />`;
+        html += `<text x="${cx + 6}" y="${pad.top + 34}" fill="#d8b4fe" font-size="11">Recovery Knee (s15) = ${ck}k</text>`;
+      }
+
+      const p90Pts = curveData.map(d => `${xPos(d.tokens_since_compaction_k)},${yPos(d.p90)}`).join(" ");
+      const p50Pts = curveData.map(d => `${xPos(d.tokens_since_compaction_k)},${yPos(d.p50)}`).join(" ");
+      const meanPts = curveData.map(d => `${xPos(d.tokens_since_compaction_k)},${yPos(d.mean_score)}`).join(" ");
+
+      html += `<polyline fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="4,3" points="${p90Pts}" />`;
+      html += `<polyline fill="none" stroke="#f59e0b" stroke-width="2" points="${p50Pts}" />`;
+      html += `<polyline fill="none" stroke="#38bdf8" stroke-width="3" points="${meanPts}" />`;
+      svg.innerHTML = html;
+    })();
+
+    // Chart 2: Signal 15 Compaction Recovery Ratio vs tokens_at_compaction
+    (function renderRecoveryChart() {
+      const svg = document.getElementById("recovery-svg");
+      if (!svg || !recoveryData.length) return;
+      const W = 460, H = 270;
+      const pad = { top: 24, right: 25, bottom: 40, left: 48 };
+      const plotW = W - pad.left - pad.right;
+      const plotH = H - pad.top - pad.bottom;
+
+      const maxK = Math.max(...recoveryData.map(d => d.tokens_at_compaction_k), 100);
+      const minK = Math.min(...recoveryData.map(d => d.tokens_at_compaction_k), 0);
+      const spanK = Math.max(maxK - minK, 25);
+
+      const xPos = (k) => pad.left + ((k - minK) / spanK) * plotW;
+      const yPos = (r) => pad.top + plotH - (Math.min(Math.max(r, 0), 1.2) / 1.2) * plotH;
+
+      let html = "";
+      [0, 0.3, 0.65, 1.0].forEach(val => {
+        const y = yPos(val);
+        const isThresh = (val === 0.65);
+        html += `<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" stroke="${isThresh ? '#ef4444' : '#1e293b'}" stroke-dasharray="${isThresh ? '4,3' : 'none'}" />`;
+        html += `<text x="${pad.left - 6}" y="${y + 4}" text-anchor="end" fill="#94a3b8" font-size="10" font-family="monospace">${val.toFixed(2)}</text>`;
+      });
+
+      const pts = recoveryData.map(d => `${xPos(d.tokens_at_compaction_k)},${yPos(d.mean_recovery_ratio)}`).join(" ");
+      html += `<polyline fill="none" stroke="#a855f7" stroke-width="2.5" points="${pts}" />`;
+      recoveryData.forEach(d => {
+        const cx = xPos(d.tokens_at_compaction_k);
+        const cy = yPos(d.mean_recovery_ratio);
+        html += `<circle cx="${cx}" cy="${cy}" r="4.5" fill="${d.mean_recovery_ratio > 0.65 ? '#ef4444' : '#22c55e'}" />`;
+        html += `<text x="${cx}" y="${H - 12}" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="monospace">${d.tokens_at_compaction_k}k</text>`;
+      });
+      svg.innerHTML = html;
+    })();
+
+    // Chart 3: Post-Compaction Stratified by Signal 14c
+    (function renderStrat14c() {
+      const svg = document.getElementById("strat-14c-svg");
+      if (!svg || !strat14cData.length) return;
+      const W = 460, H = 270;
+      const pad = { top: 24, right: 25, bottom: 40, left: 48 };
+      const plotW = W - pad.left - pad.right;
+      const plotH = H - pad.top - pad.bottom;
+
+      const maxK = Math.max(...strat14cData.map(d => d.tokens_since_compaction_k), 50);
+      const xPos = (k) => pad.left + (k / maxK) * plotW;
+      const yPos = (s) => pad.top + plotH - (Math.min(Math.max(s, 0), 1000) / 1000) * plotH;
+
+      let html = "";
+      [0, 250, 500, 750, 1000].forEach(val => {
+        const y = yPos(val);
+        html += `<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" stroke="#1e293b" />`;
+        html += `<text x="${pad.left - 6}" y="${y + 4}" text-anchor="end" fill="#94a3b8" font-size="10" font-family="monospace">${val}</text>`;
+      });
+
+      const colors = {
+        "pre_compaction": "#38bdf8",
+        "post_compaction_saved_ok": "#22c55e",
+        "post_compaction_lost_state": "#ef4444"
+      };
+      ["pre_compaction", "post_compaction_saved_ok", "post_compaction_lost_state"].forEach(st => {
+        const rows = strat14cData.filter(d => d.stratum === st);
+        if (rows.length > 1) {
+          const pts = rows.map(d => `${xPos(d.tokens_since_compaction_k)},${yPos(d.mean_score)}`).join(" ");
+          html += `<polyline fill="none" stroke="${colors[st]}" stroke-width="2.5" points="${pts}" />`;
+        }
+      });
+      html += `<text x="${pad.left + 8}" y="${pad.top + 14}" fill="#22c55e" font-size="10">● Post-Compaction (Saved State OK)</text>`;
+      html += `<text x="${pad.left + 8}" y="${pad.top + 28}" fill="#ef4444" font-size="10">● Post-Compaction (Lost State 14c)</text>`;
+      html += `<text x="${pad.left + 8}" y="${pad.top + 42}" fill="#38bdf8" font-size="10">● Pre-Compaction Baseline</text>`;
+      svg.innerHTML = html;
+    })();
+
+    // Chart 6: Task-Type Stratified Curves
+    (function renderTaskType() {
+      const svg = document.getElementById("task-type-svg");
+      if (!svg || !taskTypeData.length) return;
+      const W = 460, H = 290;
+      const pad = { top: 24, right: 25, bottom: 40, left: 48 };
+      const plotW = W - pad.left - pad.right;
+      const plotH = H - pad.top - pad.bottom;
+
+      const maxK = Math.max(...taskTypeData.map(d => d.tokens_since_compaction_k), 50);
+      const xPos = (k) => pad.left + (k / maxK) * plotW;
+      const yPos = (s) => pad.top + plotH - (Math.min(Math.max(s, 0), 1000) / 1000) * plotH;
+
+      let html = "";
+      [0, 250, 500, 750, 1000].forEach(val => {
+        const y = yPos(val);
+        html += `<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" stroke="#1e293b" />`;
+        html += `<text x="${pad.left - 6}" y="${y + 4}" text-anchor="end" fill="#94a3b8" font-size="10" font-family="monospace">${val}</text>`;
+      });
+
+      const palette = {
+        "refactor": "#ef4444",
+        "bugfix": "#f59e0b",
+        "feature": "#38bdf8",
+        "test": "#22c55e",
+        "explore": "#a855f7"
+      };
+      let legY = pad.top + 14;
+      Object.keys(palette).forEach(tt => {
+        const rows = taskTypeData.filter(d => d.task_type === tt);
+        if (rows.length > 1) {
+          const pts = rows.map(d => `${xPos(d.tokens_since_compaction_k)},${yPos(d.mean_score)}`).join(" ");
+          html += `<polyline fill="none" stroke="${palette[tt]}" stroke-width="2" points="${pts}" />`;
+          html += `<text x="${pad.left + 10}" y="${legY}" fill="${palette[tt]}" font-size="10" font-family="monospace">● ${tt}</text>`;
+          legY += 14;
+        }
+      });
+      svg.innerHTML = html;
+    })();
+  </script>
+</body>
+</html>

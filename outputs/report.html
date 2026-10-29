@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Context Rot Detector V2 — 900k Architecture, AGENTS.md &amp; Memory-Gate Report</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-alt: #263449;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-green: #22c55e;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-purple: #a855f7;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      --mono: "JetBrains Mono", "Fira Code", Consolas, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.55;
+      padding: 2rem;
+    }
+    .container { max-width: 1320px; margin: 0 auto; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.25rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    header h1 { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.02em; }
+    header p { color: var(--muted); font-size: 0.92rem; margin-top: 0.25rem; }
+    .badge {
+      display: inline-block;
+      padding: 0.35rem 0.8rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--accent-green);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+    }
+    .alert-banner {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.5);
+      color: #fde68a;
+      padding: 0.9rem 1.2rem;
+      border-radius: 0.6rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.1rem 1.2rem;
+    }
+    .kpi-label {
+      color: var(--muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+    .kpi-value {
+      font-size: 1.55rem;
+      font-weight: 700;
+      margin: 0.3rem 0;
+      font-family: var(--mono);
+    }
+    .kpi-sub { color: var(--muted); font-size: 0.8rem; }
+    .highlight-green { color: var(--accent-green); }
+    .highlight-amber { color: var(--accent-amber); }
+    .highlight-red { color: var(--accent-red); }
+    .highlight-blue { color: var(--accent); }
+    .highlight-purple { color: var(--accent-purple); }
+    .section-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+    .section-title {
+      font-size: 1.12rem;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .section-desc { color: var(--muted); font-size: 0.86rem; margin-bottom: 1.15rem; }
+    .chart-box {
+      width: 100%;
+      background: #0b1120;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      overflow-x: auto;
+    }
+    svg { width: 100%; height: auto; display: block; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    th, td { padding: 0.6rem 0.7rem; border-bottom: 1px solid var(--border); text-align: left; }
+    th {
+      background: var(--surface-alt);
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+    }
+    td.num, th.num { text-align: right; font-family: var(--mono); }
+    tr.row-highlight { background: rgba(34, 197, 94, 0.14); }
+    tr.row-default { background: rgba(239, 68, 68, 0.1); }
+    .tier-pill {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      font-family: var(--mono);
+    }
+    .tier-arch { background: rgba(168, 85, 247, 0.25); color: #e9d5ff; border: 1px solid rgba(168,85,247,0.4); }
+    .tier-1 { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+    .tier-2 { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+    .tier-3 { background: rgba(56, 189, 248, 0.2); color: #7dd3fc; }
+    .tier-side { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+    .config-box {
+      background: #0b1120;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 1rem 1.2rem;
+      font-family: var(--mono);
+      font-size: 0.83rem;
+      color: #e2e8f0;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 960px) { .two-col { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Context Rot Detector V2 — Architecture-Calibrated Compaction Report</h1>
+        <p>15 Signals (AGENTS.md + Memory-Gate + Recovery Ratio) &bull; Bucketed on <code>tokens_since_compaction</code> &bull; 900k Window</p>
+      </div>
+      <div>
+        <span class="badge">Target Trigger T = 215k &bull; OpenCode buffer = 685k</span>
+      </div>
+    </header>
+
+    
+
+    <!-- Top KPI Grid -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Recommended Compaction Trigger (T)</div>
+        <div class="kpi-value highlight-green">215,000</div>
+        <div class="kpi-sub">Bucket #43 (p90_threshold)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">OpenCode V2 <code>compaction.buffer</code></div>
+        <div class="kpi-value highlight-blue">685,000</div>
+        <div class="kpi-sub"><code>900,000 window - 215,000 T</code></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Compaction Recovery Knee (s15)</div>
+        <div class="kpi-value highlight-purple">
+          275,000
+        </div>
+        <div class="kpi-sub">Fill where <code>post_rot / pre_rot &gt; 0.65</code></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Memory-Gate Failure Onset (s14c)</div>
+        <div class="kpi-value highlight-amber">
+          275,000
+        </div>
+        <div class="kpi-sub">Fill where pre-compaction facts fail to save</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Slope Knee / P90 &gt; 400</div>
+        <div class="kpi-value highlight-red">
+          260k /
+          215k
+        </div>
+        <div class="kpi-sub">Guard: <code>--min-fill-tokens 100k</code></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Max Context Fill Reached</div>
+        <div class="kpi-value">465k / 867k</div>
+        <div class="kpi-sub"><code>tokens_since_compaction</code> / raw cumulative</div>
+      </div>
+    </div>
+
+    <!-- Chart 1: Aggregate Context Rot Curve on tokens_since_compaction -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>1. Aggregate Context Rot Curve vs. <code>tokens_since_compaction</code> (n_steps-Weighted)</span>
+        <span style="font-size: 0.8rem; color: var(--muted);">Hard-Failure Floor requires &ge;2 s1/s2 fires &bull; Filtered for Bucket Confidence (n &ge; 10)</span>
+      </div>
+      <p class="section-desc">
+        Every step is bucketed by <code>tokens_since_compaction</code> (5k windows) so post-compaction resets are never confounded with cold-start tokens. Vertical markers highlight the Slope Knee, P90 &gt; 400 crossing, and Compaction Recovery Knee.
+      </p>
+      <div class="chart-box">
+        <svg id="rot-curve-svg" viewBox="0 0 960 350"></svg>
+      </div>
+    </div>
+
+    <!-- Chart 2: Signal 15 Compaction Recovery Ratio & Signal 14c Stratified Post-Compaction Curves -->
+    <div class="two-col">
+      <div class="section-card">
+        <div class="section-title">
+          <span>2. Signal 15 — Compaction Recovery Ratio vs. Fill at Compaction</span>
+        </div>
+        <p class="section-desc">
+          Plots <code>recovery_ratio = post_compaction_rot_score / pre_compaction_rot_score</code> against <code>tokens_at_compaction</code>. Below the recovery knee, compaction restores clean state (ratio &lt; 0.45); past the knee, compaction fails to recover usable context.
+        </p>
+        <div class="chart-box" style="margin-bottom: 1rem;">
+          <svg id="recovery-svg" viewBox="0 0 460 270"></svg>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Fill at Compaction</th>
+              <th class="num">Events</th>
+              <th class="num">Pre Score</th>
+              <th class="num">Post Score</th>
+              <th class="num">Recovery Ratio</th>
+              <th class="num">14c Lost %</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+            <tr>
+              <td style="font-family: var(--mono); font-weight: 600;">175k</td>
+              <td class="num">1</td>
+              <td class="num">1.0</td>
+              <td class="num">1.0</td>
+              <td class="num highlight-red">1.00</td>
+              <td class="num">0%</td>
+            </tr>
+            
+            <tr>
+              <td style="font-family: var(--mono); font-weight: 600;">200k</td>
+              <td class="num">2</td>
+              <td class="num">1.0</td>
+              <td class="num">1.0</td>
+              <td class="num highlight-red">1.00</td>
+              <td class="num">0%</td>
+            </tr>
+            
+            <tr>
+              <td style="font-family: var(--mono); font-weight: 600;">225k</td>
+              <td class="num">3</td>
+              <td class="num">42.1</td>
+              <td class="num">1.0</td>
+              <td class="num highlight-red">0.67</td>
+              <td class="num">0%</td>
+            </tr>
+            
+            <tr>
+              <td style="font-family: var(--mono); font-weight: 600;">250k</td>
+              <td class="num">1</td>
+              <td class="num">500.0</td>
+              <td class="num">1.0</td>
+              <td class="num highlight-green">0.00</td>
+              <td class="num">0%</td>
+            </tr>
+            
+            <tr>
+              <td style="font-family: var(--mono); font-weight: 600;">275k</td>
+              <td class="num">2</td>
+              <td class="num">731.3</td>
+              <td class="num">784.3</td>
+              <td class="num highlight-red">1.06</td>
+              <td class="num">100%</td>
+            </tr>
+            
+            <tr>
+              <td style="font-family: var(--mono); font-weight: 600;">300k</td>
+              <td class="num">1</td>
+              <td class="num">833.5</td>
+              <td class="num">767.5</td>
+              <td class="num highlight-red">0.92</td>
+              <td class="num">100%</td>
+            </tr>
+            
+            <tr>
+              <td style="font-family: var(--mono); font-weight: 600;">325k</td>
+              <td class="num">1</td>
+              <td class="num">788.1</td>
+              <td class="num">977.3</td>
+              <td class="num highlight-red">1.24</td>
+              <td class="num">100%</td>
+            </tr>
+            
+            <tr>
+              <td style="font-family: var(--mono); font-weight: 600;">350k</td>
+              <td class="num">2</td>
+              <td class="num">776.8</td>
+              <td class="num">977.3</td>
+              <td class="num highlight-red">1.26</td>
+              <td class="num">100%</td>
+            </tr>
+            
+            <tr>
+              <td style="font-family: var(--mono); font-weight: 600;">375k</td>
+              <td class="num">1</td>
+              <td class="num">833.5</td>
+              <td class="num">750.2</td>
+              <td class="num highlight-red">0.90</td>
+              <td class="num">100%</td>
+            </tr>
+            
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section-card">
+        <div class="section-title">
+          <span>3. Post-Compaction Stratification by Signal 14c (Memory Gate Outcome)</span>
+        </div>
+        <p class="section-desc">
+          Compares post-compaction trajectories when the agent saved candidate facts before the memory gate closed (<strong>Saved State OK</strong>, green) vs. when candidate facts were lost across compaction (<strong>Lost State Before Gate</strong>, red).
+        </p>
+        <div class="chart-box" style="margin-bottom: 1rem;">
+          <svg id="strat-14c-svg" viewBox="0 0 460 270"></svg>
+        </div>
+        <p style="font-size: 0.82rem; color: var(--muted);">
+          <strong>Key Finding:</strong> Sessions that fail Signal 14c (lose candidate facts across compaction) start their post-compaction epoch at elevated rot and degrade rapidly, confirming that <em>memory-gate preservation threshold</em> is binding.
+        </p>
+      </div>
+    </div>
+
+    <!-- Section 4: Per-Signal Onset Table (15 Signals / 17 Evaluators) -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>4. Architecture-Calibrated Signal Breakdown (Signals 1–15, W = 14.8)</span>
+        <span style="font-size: 0.8rem; color: var(--accent);">Architecture signals (s13 AGENTS.md / s14c Memory Gate / s15 Recovery) onset at median 355k tokens • Tier 1 direct tool/edit failures onset at median 285k tokens</span>
+      </div>
+      <p class="section-desc">
+        <code>s13</code> (AGENTS.md failure, weight 1.5), <code>s15</code> (Compaction recovery failure, weight 1.3), <code>s14c</code> (Lost memory write, weight 1.2), and <code>s1–s4</code> (Tier 1 tool/edit failures, weight 1.3) carry the primary weight, while <code>s9</code> and <code>s10</code> are down-weighted to 0.3.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Signal</th>
+            <th>Name &amp; Logic</th>
+            <th>Tier</th>
+            <th>Type</th>
+            <th class="num">Weight</th>
+            <th class="num">P95 Baseline</th>
+            <th class="num">Early Rate</th>
+            <th class="num">Peak Rate</th>
+            <th class="num">Onset Fill</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">S13</td>
+            <td>
+              <strong>AGENTS.md Retrieval Failure</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">Violates discrete rules parsed from AGENTS.md in tool calls</div>
+            </td>
+            <td>
+              <span class="tier-pill tier-arch">
+                Arch #1
+              </span>
+            </td>
+            <td style="color: var(--muted);">Rule-Matcher</td>
+            <td class="num">1.5</td>
+            <td class="num">1.000</td>
+            <td class="num">0.029</td>
+            <td class="num">0.818</td>
+            <td class="num">
+              
+                <span class="highlight-amber">285k</span> (b=57)
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">S15</td>
+            <td>
+              <strong>Compaction Recovery Failure</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">post_compaction_rot_score / pre_compaction_rot_score > 0.65</div>
+            </td>
+            <td>
+              <span class="tier-pill tier-arch">
+                Arch #2
+              </span>
+            </td>
+            <td style="color: var(--muted);">Compaction-Epoch</td>
+            <td class="num">1.3</td>
+            <td class="num">1.000</td>
+            <td class="num">0.246</td>
+            <td class="num">1.000</td>
+            <td class="num">
+              
+                <span class="highlight-amber">425k</span> (b=85)
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">S14C</td>
+            <td>
+              <strong>Lost Memory Write (Gate)</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">Pre-compaction candidate facts missing in post-compaction memory</div>
+            </td>
+            <td>
+              <span class="tier-pill tier-arch">
+                Arch #3
+              </span>
+            </td>
+            <td style="color: var(--muted);">Cross-Compaction</td>
+            <td class="num">1.2</td>
+            <td class="num">0.090</td>
+            <td class="num">0.153</td>
+            <td class="num">0.255</td>
+            <td class="num">
+              
+                <span style="color: var(--muted);">Stable</span>
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">S1</td>
+            <td>
+              <strong>Tool Error</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">tool_result.error non-null OR exit_code != 0</div>
+            </td>
+            <td>
+              <span class="tier-pill tier-1">
+                Tier 1
+              </span>
+            </td>
+            <td style="color: var(--muted);">Stateless</td>
+            <td class="num">1.3</td>
+            <td class="num">1.000</td>
+            <td class="num">0.081</td>
+            <td class="num">0.909</td>
+            <td class="num">
+              
+                <span class="highlight-amber">285k</span> (b=57)
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">S2</td>
+            <td>
+              <strong>Edit Failure</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">edit/write/patch result matches string-not-found / conflict</div>
+            </td>
+            <td>
+              <span class="tier-pill tier-1">
+                Tier 1
+              </span>
+            </td>
+            <td style="color: var(--muted);">Stateless</td>
+            <td class="num">1.3</td>
+            <td class="num">1.000</td>
+            <td class="num">0.081</td>
+            <td class="num">0.909</td>
+            <td class="num">
+              
+                <span class="highlight-amber">285k</span> (b=57)
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">S3</td>
+            <td>
+              <strong>Retry Loop</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">Identical tool+params hash retried within 3 steps after error</div>
+            </td>
+            <td>
+              <span class="tier-pill tier-1">
+                Tier 1
+              </span>
+            </td>
+            <td style="color: var(--muted);">Windowed (3)</td>
+            <td class="num">1.3</td>
+            <td class="num">1.000</td>
+            <td class="num">0.049</td>
+            <td class="num">0.833</td>
+            <td class="num">
+              
+                <span class="highlight-amber">300k</span> (b=60)
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">S4</td>
+            <td>
+              <strong>Session Re-Read</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">read tool invoked on a file path already read earlier in session</div>
+            </td>
+            <td>
+              <span class="tier-pill tier-1">
+                Tier 1
+              </span>
+            </td>
+            <td style="color: var(--muted);">Session-Stateful</td>
+            <td class="num">1.3</td>
+            <td class="num">1.000</td>
+            <td class="num">0.025</td>
+            <td class="num">0.917</td>
+            <td class="num">
+              
+                <span class="highlight-amber">285k</span> (b=57)
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">S5</td>
+            <td>
+              <strong>Self-Correction</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">Assistant apologizes or admits error ('I apologize', 'let me fix')</div>
+            </td>
+            <td>
+              <span class="tier-pill tier-2">
+                Tier 2
+              </span>
+            </td>
+            <td style="color: var(--muted);">Stateless</td>
+            <td class="num">0.8</td>
+            <td class="num">0.500</td>
+            <td class="num">0.048</td>
+            <td class="num">0.636</td>
+            <td class="num">
+              
+                <span class="highlight-amber">270k</span> (b=54)
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">S6</td>
+            <td>
+              <strong>Duplicate Read (Window)</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">read tool invoked on same file path within last 5 assistant steps</div>
+            </td>
+            <td>
+              <span class="tier-pill tier-2">
+                Tier 2
+              </span>
+            </td>
+            <td style="color: var(--muted);">Windowed (5)</td>
+            <td class="num">0.8</td>
+            <td class="num">1.000</td>
+            <td class="num">0.025</td>
+            <td class="num">0.917</td>
+            <td class="num">
+              
+                <span class="highlight-amber">285k</span> (b=57)
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">S7</td>
+            <td>
+              <strong>Unreferenced Large Output</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">Tool output >5k tokens with no 80-char shingle used in next 3 steps</div>
+            </td>
+            <td>
+              <span class="tier-pill tier-3">
+                Tier 3
+              </span>
+            </td>
+            <td style="color: var(--muted);">Lookahead (3)</td>
+            <td class="num">0.6</td>
+            <td class="num">0.060</td>
+            <td class="num">0.013</td>
+            <td class="num">0.250</td>
+            <td class="num">
+              
+                <span class="highlight-amber">235k</span> (b=47)
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">S8</td>
+            <td>
+              <strong>Repetition Entropy Drop</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">Shannon entropy of last-20 tool sequence drops >0.3 below baseline</div>
+            </td>
+            <td>
+              <span class="tier-pill tier-3">
+                Tier 3
+              </span>
+            </td>
+            <td style="color: var(--muted);">Windowed (20)</td>
+            <td class="num">0.6</td>
+            <td class="num">1.000</td>
+            <td class="num">0.240</td>
+            <td class="num">1.000</td>
+            <td class="num">
+              
+                <span class="highlight-amber">270k</span> (b=54)
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">S11</td>
+            <td>
+              <strong>Contradictory Edit</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">Edit reverts file to hash from 2 edits ago OR >=3 edits in 20 steps</div>
+            </td>
+            <td>
+              <span class="tier-pill tier-3">
+                Tier 3
+              </span>
+            </td>
+            <td style="color: var(--muted);">Session-Stateful</td>
+            <td class="num">0.6</td>
+            <td class="num">1.000</td>
+            <td class="num">0.079</td>
+            <td class="num">0.909</td>
+            <td class="num">
+              
+                <span class="highlight-amber">300k</span> (b=60)
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">S14A</td>
+            <td>
+              <strong>Memory Write Latency</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">Steps from compaction to first memory write exceeds gate threshold (3)</div>
+            </td>
+            <td>
+              <span class="tier-pill tier-arch">
+                Memory
+              </span>
+            </td>
+            <td style="color: var(--muted);">Post-Compaction</td>
+            <td class="num">0.5</td>
+            <td class="num">0.070</td>
+            <td class="num">0.153</td>
+            <td class="num">0.255</td>
+            <td class="num">
+              
+                <span style="color: var(--muted);">Stable</span>
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">S14B</td>
+            <td>
+              <strong>Memory Write Burst/Starve</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">0 memory writes when facts exist OR >=5 burst writes in 10 steps</div>
+            </td>
+            <td>
+              <span class="tier-pill tier-arch">
+                Memory
+              </span>
+            </td>
+            <td style="color: var(--muted);">Post-Compaction</td>
+            <td class="num">0.5</td>
+            <td class="num">0.060</td>
+            <td class="num">0.153</td>
+            <td class="num">0.255</td>
+            <td class="num">
+              
+                <span style="color: var(--muted);">Stable</span>
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">S9</td>
+            <td>
+              <strong>Instruction Amnesia</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">Violates user negative constraint (down-weighted; covered by AGENTS.md)</div>
+            </td>
+            <td>
+              <span class="tier-pill tier-side">
+                Defended
+              </span>
+            </td>
+            <td style="color: var(--muted);">Session-Stateful</td>
+            <td class="num">0.3</td>
+            <td class="num">1.000</td>
+            <td class="num">0.029</td>
+            <td class="num">0.727</td>
+            <td class="num">
+              
+                <span class="highlight-amber">460k</span> (b=92)
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">S10</td>
+            <td>
+              <strong>Stale Todo Snapshot</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">sha256(todos) matches snapshot >=10 steps ago (down-weighted)</div>
+            </td>
+            <td>
+              <span class="tier-pill tier-side">
+                Defended
+              </span>
+            </td>
+            <td style="color: var(--muted);">Session-Stateful</td>
+            <td class="num">0.3</td>
+            <td class="num">0.500</td>
+            <td class="num">0.015</td>
+            <td class="num">0.167</td>
+            <td class="num">
+              
+                <span style="color: var(--muted);">Stable</span>
+              
+            </td>
+          </tr>
+          
+          <tr>
+            <td style="font-family: var(--mono); font-weight: 700;">S12</td>
+            <td>
+              <strong>Latency Outlier</strong>
+              <div style="color: var(--muted); font-size: 0.75rem;">Turn response latency exceeds 3x session median latency</div>
+            </td>
+            <td>
+              <span class="tier-pill tier-side">
+                Side
+              </span>
+            </td>
+            <td style="color: var(--muted);">Session-Stateful</td>
+            <td class="num">0.3</td>
+            <td class="num">0.500</td>
+            <td class="num">0.000</td>
+            <td class="num">0.417</td>
+            <td class="num">
+              
+                <span class="highlight-amber">325k</span> (b=65)
+              
+            </td>
+          </tr>
+          
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Section 5: Real Cache-Miss Cost vs Quality Trade-Off & Task-Type Stratification -->
+    <div class="two-col">
+      <div class="section-card">
+        <div class="section-title">
+          <span>5. Prompt-Cache Cost vs. Rot Score Trade-Off (Real Usage Telemetry)</span>
+        </div>
+        <p class="section-desc">
+          Priced at <code>$0.028/MTok</code> cached input, <code>$0.28/MTok</code> uncached input, and <code>$1.1/MTok</code> output using captured <code>prompt_cache_hit_tokens</code> and <code>prompt_cache_miss_tokens</code>.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Trigger T</th>
+              <th class="num">Buffer</th>
+              <th class="num">Cache Miss (M)</th>
+              <th class="num">Total Cost</th>
+              <th class="num">Mean Score</th>
+              <th class="num">P90 Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+            <tr class="">
+              <td style="font-family: var(--mono); font-weight: 600;">
+                120k
+                
+                
+              </td>
+              <td class="num">780k</td>
+              <td class="num">101.17M</td>
+              <td class="num">$60.27</td>
+              <td class="num">51.2</td>
+              <td class="num">128.3</td>
+            </tr>
+            
+            <tr class="">
+              <td style="font-family: var(--mono); font-weight: 600;">
+                160k
+                
+                
+              </td>
+              <td class="num">740k</td>
+              <td class="num">94.70M</td>
+              <td class="num">$58.49</td>
+              <td class="num">43.9</td>
+              <td class="num">127.0</td>
+            </tr>
+            
+            <tr class="">
+              <td style="font-family: var(--mono); font-weight: 600;">
+                200k
+                
+                
+              </td>
+              <td class="num">700k</td>
+              <td class="num">90.90M</td>
+              <td class="num">$57.43</td>
+              <td class="num">41.7</td>
+              <td class="num">111.0</td>
+            </tr>
+            
+            <tr class="row-highlight">
+              <td style="font-family: var(--mono); font-weight: 600;">
+                215k
+                <span class="badge" style="padding: 0.08rem 0.4rem; font-size: 0.68rem;">OPTIMAL</span>
+                
+              </td>
+              <td class="num">685k</td>
+              <td class="num">89.76M</td>
+              <td class="num">$57.12</td>
+              <td class="num">43.0</td>
+              <td class="num">110.9</td>
+            </tr>
+            
+            <tr class="">
+              <td style="font-family: var(--mono); font-weight: 600;">
+                240k
+                
+                
+              </td>
+              <td class="num">660k</td>
+              <td class="num">88.20M</td>
+              <td class="num">$56.69</td>
+              <td class="num">44.3</td>
+              <td class="num">110.9</td>
+            </tr>
+            
+            <tr class="">
+              <td style="font-family: var(--mono); font-weight: 600;">
+                280k
+                
+                
+              </td>
+              <td class="num">620k</td>
+              <td class="num">86.44M</td>
+              <td class="num">$56.21</td>
+              <td class="num">61.9</td>
+              <td class="num">132.0</td>
+            </tr>
+            
+            <tr class="">
+              <td style="font-family: var(--mono); font-weight: 600;">
+                320k
+                
+                
+              </td>
+              <td class="num">580k</td>
+              <td class="num">84.94M</td>
+              <td class="num">$55.80</td>
+              <td class="num">96.4</td>
+              <td class="num">500.0</td>
+            </tr>
+            
+            <tr class="">
+              <td style="font-family: var(--mono); font-weight: 600;">
+                360k
+                
+                
+              </td>
+              <td class="num">540k</td>
+              <td class="num">83.88M</td>
+              <td class="num">$55.50</td>
+              <td class="num">125.7</td>
+              <td class="num">500.0</td>
+            </tr>
+            
+            <tr class="">
+              <td style="font-family: var(--mono); font-weight: 600;">
+                420k
+                
+                
+              </td>
+              <td class="num">480k</td>
+              <td class="num">82.80M</td>
+              <td class="num">$55.20</td>
+              <td class="num">161.9</td>
+              <td class="num">500.0</td>
+            </tr>
+            
+            <tr class="">
+              <td style="font-family: var(--mono); font-weight: 600;">
+                500k
+                
+                
+              </td>
+              <td class="num">400k</td>
+              <td class="num">81.47M</td>
+              <td class="num">$54.84</td>
+              <td class="num">190.4</td>
+              <td class="num">642.0</td>
+            </tr>
+            
+            <tr class="">
+              <td style="font-family: var(--mono); font-weight: 600;">
+                600k
+                
+                
+              </td>
+              <td class="num">300k</td>
+              <td class="num">80.45M</td>
+              <td class="num">$54.55</td>
+              <td class="num">190.9</td>
+              <td class="num">642.0</td>
+            </tr>
+            
+            <tr class="row-default">
+              <td style="font-family: var(--mono); font-weight: 600;">
+                900k
+                
+                <span style="color: var(--accent-red); font-size: 0.7rem;">(No-Compact 900k)</span>
+              </td>
+              <td class="num">16k</td>
+              <td class="num">77.58M</td>
+              <td class="num">$53.76</td>
+              <td class="num">190.9</td>
+              <td class="num">642.0</td>
+            </tr>
+            
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section-card">
+        <div class="section-title">
+          <span>6. Task-Type Stratified Rot Curves (First User Message Tagging)</span>
+        </div>
+        <p class="section-desc">
+          Sessions are tagged from their opening prompt into <code>refactor</code>, <code>bugfix</code>, <code>feature</code>, <code>test</code>, or <code>explore</code> to separate task difficulty from context fill.
+        </p>
+        <div class="chart-box">
+          <svg id="task-type-svg" viewBox="0 0 460 290"></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 7: Verified OpenCode Config Snippet (Inversion-Safe buffer = window - T) -->
+    <div class="section-card">
+      <div class="section-title">
+        <span>7. Verified OpenCode Configuration (Inversion-Safe <code>buffer = model_window - T</code>)</span>
+        <span style="font-size: 0.8rem; color: var(--accent-amber);">IMPORTANT: OpenCode uses a free-token buffer below the model limit, NOT an absolute maxContextTokens key</span>
+      </div>
+      <p class="section-desc">
+        In OpenCode V2 (<code>https://opencode.ai/v2/docs/compaction/</code>), <code>compaction.buffer</code> specifies the <strong>tokens to keep free below the model's context limit</strong> (`trigger = model_context_window - buffer`). For your <strong>900,000-token window</strong> and recommended compaction trigger <strong>T = 215,000 tokens</strong>, set <code>buffer = 900,000 - 215,000 = 685,000</code>:
+      </p>
+      <div class="two-col">
+        <div>
+          <div style="font-size: 0.8rem; color: var(--accent-green); font-weight: 600; margin-bottom: 0.4rem;">OpenCode V2 (<code>opencode.jsonc</code> — Current Standard)</div>
+          <div class="config-box">{
+  "$schema": "https://opencode.ai/config.json",
+  "compaction": {
+    "auto": true,
+    "keep": {
+      "tokens": 15000
+    },
+    "buffer": 685000
+  }
+}</div>
+        </div>
+        <div>
+          <div style="font-size: 0.8rem; color: var(--muted); font-weight: 600; margin-bottom: 0.4rem;">OpenCode V1 Legacy (<code>compaction.reserved</code>)</div>
+          <div class="config-box">{
+  "$schema": "https://opencode.ai/config.json",
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 685000
+  }
+}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const curveData = [{"bucket_id": 3, "context_tokens": 15000, "context_tokens_k": 15, "tokens_since_compaction_k": 15, "mean_score": 126.6, "p50": 1.0, "p90": 534.2, "mean_score_raw": 129.0, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 52, "slope_d5k": 0.0}, {"bucket_id": 4, "context_tokens": 20000, "context_tokens_k": 20, "tokens_since_compaction_k": 20, "mean_score": 110.93, "p50": 1.0, "p90": 510.45, "mean_score_raw": 115.26, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 61, "slope_d5k": -15.67}, {"bucket_id": 5, "context_tokens": 25000, "context_tokens_k": 25, "tokens_since_compaction_k": 25, "mean_score": 128.27, "p50": 1.0, "p90": 531.28, "mean_score_raw": 122.69, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 62, "slope_d5k": 17.34}, {"bucket_id": 6, "context_tokens": 30000, "context_tokens_k": 30, "tokens_since_compaction_k": 30, "mean_score": 134.71, "p50": 1.0, "p90": 528.5, "mean_score_raw": 141.87, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 55, "slope_d5k": 6.44}, {"bucket_id": 7, "context_tokens": 35000, "context_tokens_k": 35, "tokens_since_compaction_k": 35, "mean_score": 126.96, "p50": 1.0, "p90": 500.0, "mean_score_raw": 138.12, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 57, "slope_d5k": -7.75}, {"bucket_id": 8, "context_tokens": 40000, "context_tokens_k": 40, "tokens_since_compaction_k": 40, "mean_score": 46.89, "p50": 1.0, "p90": 132.0, "mean_score_raw": 33.75, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 56, "slope_d5k": -80.07}, {"bucket_id": 9, "context_tokens": 45000, "context_tokens_k": 45, "tokens_since_compaction_k": 45, "mean_score": 33.75, "p50": 1.0, "p90": 132.0, "mean_score_raw": 46.89, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 56, "slope_d5k": -13.14}, {"bucket_id": 10, "context_tokens": 50000, "context_tokens_k": 50, "tokens_since_compaction_k": 50, "mean_score": 31.54, "p50": 1.0, "p90": 132.0, "mean_score_raw": 31.54, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 56, "slope_d5k": -2.21}, {"bucket_id": 11, "context_tokens": 55000, "context_tokens_k": 55, "tokens_since_compaction_k": 55, "mean_score": 24.93, "p50": 1.0, "p90": 91.0, "mean_score_raw": 24.93, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 56, "slope_d5k": -6.61}, {"bucket_id": 12, "context_tokens": 60000, "context_tokens_k": 60, "tokens_since_compaction_k": 60, "mean_score": 24.21, "p50": 1.0, "p90": 91.0, "mean_score_raw": 24.21, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 56, "slope_d5k": -0.72}, {"bucket_id": 13, "context_tokens": 65000, "context_tokens_k": 65, "tokens_since_compaction_k": 65, "mean_score": 23.5, "p50": 1.0, "p90": 91.0, "mean_score_raw": 23.5, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 56, "slope_d5k": -0.71}, {"bucket_id": 14, "context_tokens": 70000, "context_tokens_k": 70, "tokens_since_compaction_k": 70, "mean_score": 23.5, "p50": 1.0, "p90": 91.0, "mean_score_raw": 23.5, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 56, "slope_d5k": 0.0}, {"bucket_id": 15, "context_tokens": 75000, "context_tokens_k": 75, "tokens_since_compaction_k": 75, "mean_score": 23.5, "p50": 1.0, "p90": 91.0, "mean_score_raw": 23.5, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 56, "slope_d5k": 0.0}, {"bucket_id": 16, "context_tokens": 80000, "context_tokens_k": 80, "tokens_since_compaction_k": 80, "mean_score": 23.5, "p50": 1.0, "p90": 91.0, "mean_score_raw": 23.5, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 56, "slope_d5k": 0.0}, {"bucket_id": 17, "context_tokens": 85000, "context_tokens_k": 85, "tokens_since_compaction_k": 85, "mean_score": 23.5, "p50": 1.0, "p90": 91.0, "mean_score_raw": 23.5, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 56, "slope_d5k": 0.0}, {"bucket_id": 18, "context_tokens": 90000, "context_tokens_k": 90, "tokens_since_compaction_k": 90, "mean_score": 23.5, "p50": 1.0, "p90": 91.0, "mean_score_raw": 23.5, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 56, "slope_d5k": 0.0}, {"bucket_id": 19, "context_tokens": 95000, "context_tokens_k": 95, "tokens_since_compaction_k": 95, "mean_score": 23.5, "p50": 1.0, "p90": 91.0, "mean_score_raw": 23.5, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 56, "slope_d5k": 0.0}, {"bucket_id": 20, "context_tokens": 100000, "context_tokens_k": 100, "tokens_since_compaction_k": 100, "mean_score": 23.5, "p50": 1.0, "p90": 91.0, "mean_score_raw": 23.5, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 56, "slope_d5k": 0.0}, {"bucket_id": 21, "context_tokens": 105000, "context_tokens_k": 105, "tokens_since_compaction_k": 105, "mean_score": 23.5, "p50": 1.0, "p90": 91.0, "mean_score_raw": 26.57, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 56, "slope_d5k": 0.0}, {"bucket_id": 22, "context_tokens": 110000, "context_tokens_k": 110, "tokens_since_compaction_k": 110, "mean_score": 23.11, "p50": 1.0, "p90": 91.0, "mean_score_raw": 24.54, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 57, "slope_d5k": -0.39}, {"bucket_id": 23, "context_tokens": 115000, "context_tokens_k": 115, "tokens_since_compaction_k": 115, "mean_score": 21.66, "p50": 1.0, "p90": 91.0, "mean_score_raw": 38.02, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 61, "slope_d5k": -1.45}, {"bucket_id": 24, "context_tokens": 120000, "context_tokens_k": 120, "tokens_since_compaction_k": 120, "mean_score": 24.28, "p50": 1.0, "p90": 91.0, "mean_score_raw": 24.28, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 58, "slope_d5k": 2.62}, {"bucket_id": 25, "context_tokens": 125000, "context_tokens_k": 125, "tokens_since_compaction_k": 125, "mean_score": 22.36, "p50": 1.0, "p90": 91.0, "mean_score_raw": 22.36, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 59, "slope_d5k": -1.92}, {"bucket_id": 26, "context_tokens": 130000, "context_tokens_k": 130, "tokens_since_compaction_k": 130, "mean_score": 22.72, "p50": 1.0, "p90": 91.0, "mean_score_raw": 22.72, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 58, "slope_d5k": 0.36}, {"bucket_id": 27, "context_tokens": 135000, "context_tokens_k": 135, "tokens_since_compaction_k": 135, "mean_score": 25.0, "p50": 1.0, "p90": 91.0, "mean_score_raw": 26.37, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 60, "slope_d5k": 2.28}, {"bucket_id": 28, "context_tokens": 140000, "context_tokens_k": 140, "tokens_since_compaction_k": 140, "mean_score": 22.72, "p50": 1.0, "p90": 91.0, "mean_score_raw": 22.72, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 58, "slope_d5k": -2.28}, {"bucket_id": 29, "context_tokens": 145000, "context_tokens_k": 145, "tokens_since_compaction_k": 145, "mean_score": 23.88, "p50": 1.0, "p90": 91.0, "mean_score_raw": 23.88, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 59, "slope_d5k": 1.16}, {"bucket_id": 30, "context_tokens": 150000, "context_tokens_k": 150, "tokens_since_compaction_k": 150, "mean_score": 24.28, "p50": 1.0, "p90": 91.0, "mean_score_raw": 24.28, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 58, "slope_d5k": 0.4}, {"bucket_id": 31, "context_tokens": 155000, "context_tokens_k": 155, "tokens_since_compaction_k": 155, "mean_score": 24.28, "p50": 1.0, "p90": 91.0, "mean_score_raw": 24.28, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 58, "slope_d5k": 0.0}, {"bucket_id": 32, "context_tokens": 160000, "context_tokens_k": 160, "tokens_since_compaction_k": 160, "mean_score": 23.5, "p50": 1.0, "p90": 91.0, "mean_score_raw": 23.5, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 56, "slope_d5k": -0.78}, {"bucket_id": 33, "context_tokens": 165000, "context_tokens_k": 165, "tokens_since_compaction_k": 165, "mean_score": 23.5, "p50": 1.0, "p90": 91.0, "mean_score_raw": 23.5, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 56, "slope_d5k": 0.0}, {"bucket_id": 34, "context_tokens": 170000, "context_tokens_k": 170, "tokens_since_compaction_k": 170, "mean_score": 23.5, "p50": 1.0, "p90": 91.0, "mean_score_raw": 23.5, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 56, "slope_d5k": 0.0}, {"bucket_id": 35, "context_tokens": 175000, "context_tokens_k": 175, "tokens_since_compaction_k": 175, "mean_score": 23.11, "p50": 1.0, "p90": 91.0, "mean_score_raw": 40.61, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 57, "slope_d5k": -0.39}, {"bucket_id": 36, "context_tokens": 180000, "context_tokens_k": 180, "tokens_since_compaction_k": 180, "mean_score": 23.91, "p50": 1.0, "p90": 91.0, "mean_score_raw": 23.91, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 55, "slope_d5k": 0.8}, {"bucket_id": 37, "context_tokens": 185000, "context_tokens_k": 185, "tokens_since_compaction_k": 185, "mean_score": 31.07, "p50": 1.0, "p90": 102.0, "mean_score_raw": 63.13, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 55, "slope_d5k": 7.16}, {"bucket_id": 38, "context_tokens": 190000, "context_tokens_k": 190, "tokens_since_compaction_k": 190, "mean_score": 33.44, "p50": 1.0, "p90": 135.0, "mean_score_raw": 34.0, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 54, "slope_d5k": 2.37}, {"bucket_id": 39, "context_tokens": 195000, "context_tokens_k": 195, "tokens_since_compaction_k": 195, "mean_score": 29.63, "p50": 1.0, "p90": 91.0, "mean_score_raw": 45.93, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 54, "slope_d5k": -3.81}, {"bucket_id": 40, "context_tokens": 200000, "context_tokens_k": 200, "tokens_since_compaction_k": 200, "mean_score": 45.6, "p50": 1.0, "p90": 128.4, "mean_score_raw": 59.38, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 53, "slope_d5k": 15.97}, {"bucket_id": 41, "context_tokens": 205000, "context_tokens_k": 205, "tokens_since_compaction_k": 205, "mean_score": 60.38, "p50": 1.0, "p90": 96.4, "mean_score_raw": 76.12, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 52, "slope_d5k": 14.78}, {"bucket_id": 42, "context_tokens": 210000, "context_tokens_k": 210, "tokens_since_compaction_k": 210, "mean_score": 61.55, "p50": 1.0, "p90": 96.7, "mean_score_raw": 85.43, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 51, "slope_d5k": 1.17}, {"bucket_id": 43, "context_tokens": 215000, "context_tokens_k": 215, "tokens_since_compaction_k": 215, "mean_score": 78.8, "p50": 1.0, "p90": 485.9, "mean_score_raw": 78.57, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 51, "slope_d5k": 17.25}, {"bucket_id": 44, "context_tokens": 220000, "context_tokens_k": 220, "tokens_since_compaction_k": 220, "mean_score": 57.78, "p50": 1.0, "p90": 91.0, "mean_score_raw": 75.43, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 51, "slope_d5k": -21.02}, {"bucket_id": 45, "context_tokens": 225000, "context_tokens_k": 225, "tokens_since_compaction_k": 225, "mean_score": 49.44, "p50": 1.0, "p90": 177.0, "mean_score_raw": 76.92, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 50, "slope_d5k": -8.34}, {"bucket_id": 46, "context_tokens": 230000, "context_tokens_k": 230, "tokens_since_compaction_k": 230, "mean_score": 77.68, "p50": 1.0, "p90": 284.1, "mean_score_raw": 69.94, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 47, "slope_d5k": 28.24}, {"bucket_id": 47, "context_tokens": 235000, "context_tokens_k": 235, "tokens_since_compaction_k": 235, "mean_score": 72.08, "p50": 1.0, "p90": 209.3, "mean_score_raw": 98.0, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 48, "slope_d5k": -5.6}, {"bucket_id": 48, "context_tokens": 240000, "context_tokens_k": 240, "tokens_since_compaction_k": 240, "mean_score": 126.0, "p50": 1.0, "p90": 500.0, "mean_score_raw": 100.07, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 46, "slope_d5k": 53.92}, {"bucket_id": 49, "context_tokens": 245000, "context_tokens_k": 245, "tokens_since_compaction_k": 245, "mean_score": 126.96, "p50": 1.0, "p90": 500.0, "mean_score_raw": 125.17, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 47, "slope_d5k": 0.96}, {"bucket_id": 50, "context_tokens": 250000, "context_tokens_k": 250, "tokens_since_compaction_k": 250, "mean_score": 140.29, "p50": 1.0, "p90": 500.0, "mean_score_raw": 125.64, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 45, "slope_d5k": 13.33}, {"bucket_id": 51, "context_tokens": 255000, "context_tokens_k": 255, "tokens_since_compaction_k": 255, "mean_score": 104.48, "p50": 1.0, "p90": 500.0, "mean_score_raw": 121.28, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 46, "slope_d5k": -35.81}, {"bucket_id": 52, "context_tokens": 260000, "context_tokens_k": 260, "tokens_since_compaction_k": 260, "mean_score": 179.75, "p50": 22.0, "p90": 500.0, "mean_score_raw": 213.43, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 44, "slope_d5k": 75.27}, {"bucket_id": 53, "context_tokens": 265000, "context_tokens_k": 265, "tokens_since_compaction_k": 265, "mean_score": 295.49, "p50": 500.0, "p90": 502.45, "mean_score_raw": 273.63, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 43, "slope_d5k": 115.74}, {"bucket_id": 54, "context_tokens": 270000, "context_tokens_k": 270, "tokens_since_compaction_k": 270, "mean_score": 377.81, "p50": 500.0, "p90": 522.2, "mean_score_raw": 393.1, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 42, "slope_d5k": 82.32}, {"bucket_id": 55, "context_tokens": 275000, "context_tokens_k": 275, "tokens_since_compaction_k": 275, "mean_score": 408.83, "p50": 500.0, "p90": 561.4, "mean_score_raw": 387.12, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 42, "slope_d5k": 31.02}, {"bucket_id": 56, "context_tokens": 280000, "context_tokens_k": 280, "tokens_since_compaction_k": 280, "mean_score": 462.87, "p50": 500.0, "p90": 692.5, "mean_score_raw": 426.41, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 39, "slope_d5k": 54.04}, {"bucket_id": 57, "context_tokens": 285000, "context_tokens_k": 285, "tokens_since_compaction_k": 285, "mean_score": 501.71, "p50": 500.0, "p90": 712.3, "mean_score_raw": 507.8, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 41, "slope_d5k": 38.84}, {"bucket_id": 58, "context_tokens": 290000, "context_tokens_k": 290, "tokens_since_compaction_k": 290, "mean_score": 516.55, "p50": 500.0, "p90": 758.5, "mean_score_raw": 494.4, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 40, "slope_d5k": 14.84}, {"bucket_id": 59, "context_tokens": 295000, "context_tokens_k": 295, "tokens_since_compaction_k": 295, "mean_score": 524.59, "p50": 500.0, "p90": 742.55, "mean_score_raw": 441.79, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 39, "slope_d5k": 8.04}, {"bucket_id": 60, "context_tokens": 300000, "context_tokens_k": 300, "tokens_since_compaction_k": 300, "mean_score": 542.47, "p50": 500.0, "p90": 766.4, "mean_score_raw": 547.0, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 38, "slope_d5k": 17.88}, {"bucket_id": 61, "context_tokens": 305000, "context_tokens_k": 305, "tokens_since_compaction_k": 305, "mean_score": 501.63, "p50": 500.0, "p90": 760.4, "mean_score_raw": 496.79, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 38, "slope_d5k": -40.84}, {"bucket_id": 62, "context_tokens": 310000, "context_tokens_k": 310, "tokens_since_compaction_k": 310, "mean_score": 461.95, "p50": 500.0, "p90": 753.75, "mean_score_raw": 439.24, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 37, "slope_d5k": -39.68}, {"bucket_id": 63, "context_tokens": 315000, "context_tokens_k": 315, "tokens_since_compaction_k": 315, "mean_score": 437.83, "p50": 500.0, "p90": 704.3, "mean_score_raw": 435.94, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 36, "slope_d5k": -24.12}, {"bucket_id": 64, "context_tokens": 320000, "context_tokens_k": 320, "tokens_since_compaction_k": 320, "mean_score": 472.11, "p50": 500.0, "p90": 752.5, "mean_score_raw": 481.5, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 36, "slope_d5k": 34.28}, {"bucket_id": 65, "context_tokens": 325000, "context_tokens_k": 325, "tokens_since_compaction_k": 325, "mean_score": 442.57, "p50": 500.0, "p90": 748.75, "mean_score_raw": 486.94, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 35, "slope_d5k": -29.54}, {"bucket_id": 66, "context_tokens": 330000, "context_tokens_k": 330, "tokens_since_compaction_k": 330, "mean_score": 440.06, "p50": 500.0, "p90": 745.6, "mean_score_raw": 381.65, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 34, "slope_d5k": -2.51}, {"bucket_id": 67, "context_tokens": 335000, "context_tokens_k": 335, "tokens_since_compaction_k": 335, "mean_score": 461.71, "p50": 500.0, "p90": 765.2, "mean_score_raw": 393.35, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 34, "slope_d5k": 21.65}, {"bucket_id": 68, "context_tokens": 340000, "context_tokens_k": 340, "tokens_since_compaction_k": 340, "mean_score": 446.77, "p50": 500.0, "p90": 780.0, "mean_score_raw": 427.71, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 35, "slope_d5k": -14.94}, {"bucket_id": 69, "context_tokens": 345000, "context_tokens_k": 345, "tokens_since_compaction_k": 345, "mean_score": 465.41, "p50": 500.0, "p90": 781.2, "mean_score_raw": 437.71, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 34, "slope_d5k": 18.64}, {"bucket_id": 70, "context_tokens": 350000, "context_tokens_k": 350, "tokens_since_compaction_k": 350, "mean_score": 508.66, "p50": 500.0, "p90": 775.75, "mean_score_raw": 402.51, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 35, "slope_d5k": 43.25}, {"bucket_id": 71, "context_tokens": 355000, "context_tokens_k": 355, "tokens_since_compaction_k": 355, "mean_score": 509.15, "p50": 500.0, "p90": 762.85, "mean_score_raw": 520.36, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 33, "slope_d5k": 0.49}, {"bucket_id": 72, "context_tokens": 360000, "context_tokens_k": 360, "tokens_since_compaction_k": 360, "mean_score": 467.97, "p50": 500.0, "p90": 764.95, "mean_score_raw": 494.55, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 31, "slope_d5k": -41.18}, {"bucket_id": 73, "context_tokens": 365000, "context_tokens_k": 365, "tokens_since_compaction_k": 365, "mean_score": 475.33, "p50": 500.0, "p90": 786.0, "mean_score_raw": 405.07, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 30, "slope_d5k": 7.36}, {"bucket_id": 74, "context_tokens": 370000, "context_tokens_k": 370, "tokens_since_compaction_k": 370, "mean_score": 439.07, "p50": 500.0, "p90": 776.0, "mean_score_raw": 496.53, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 30, "slope_d5k": -36.26}, {"bucket_id": 75, "context_tokens": 375000, "context_tokens_k": 375, "tokens_since_compaction_k": 375, "mean_score": 455.67, "p50": 500.0, "p90": 776.0, "mean_score_raw": 354.5, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 30, "slope_d5k": 16.6}, {"bucket_id": 76, "context_tokens": 380000, "context_tokens_k": 380, "tokens_since_compaction_k": 380, "mean_score": 395.36, "p50": 500.0, "p90": 780.2, "mean_score_raw": 431.93, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 28, "slope_d5k": -60.31}, {"bucket_id": 77, "context_tokens": 385000, "context_tokens_k": 385, "tokens_since_compaction_k": 385, "mean_score": 456.07, "p50": 500.0, "p90": 786.0, "mean_score_raw": 425.63, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 27, "slope_d5k": 60.71}, {"bucket_id": 78, "context_tokens": 390000, "context_tokens_k": 390, "tokens_since_compaction_k": 390, "mean_score": 456.34, "p50": 500.0, "p90": 786.55, "mean_score_raw": 430.93, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 29, "slope_d5k": 0.27}, {"bucket_id": 79, "context_tokens": 395000, "context_tokens_k": 395, "tokens_since_compaction_k": 395, "mean_score": 485.23, "p50": 500.0, "p90": 776.0, "mean_score_raw": 437.07, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 30, "slope_d5k": 28.89}, {"bucket_id": 80, "context_tokens": 400000, "context_tokens_k": 400, "tokens_since_compaction_k": 400, "mean_score": 450.34, "p50": 500.0, "p90": 777.55, "mean_score_raw": 462.48, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 29, "slope_d5k": -34.89}, {"bucket_id": 81, "context_tokens": 405000, "context_tokens_k": 405, "tokens_since_compaction_k": 405, "mean_score": 467.5, "p50": 500.0, "p90": 786.0, "mean_score_raw": 412.86, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 28, "slope_d5k": 17.16}, {"bucket_id": 82, "context_tokens": 410000, "context_tokens_k": 410, "tokens_since_compaction_k": 410, "mean_score": 496.57, "p50": 500.0, "p90": 786.0, "mean_score_raw": 425.93, "mean_confidence": 1.0, "n_sessions_contributing": 14, "total_steps": 28, "slope_d5k": 29.07}, {"bucket_id": 83, "context_tokens": 415000, "context_tokens_k": 415, "tokens_since_compaction_k": 415, "mean_score": 506.08, "p50": 500.0, "p90": 786.0, "mean_score_raw": 484.08, "mean_confidence": 1.0, "n_sessions_contributing": 13, "total_steps": 26, "slope_d5k": 9.51}, {"bucket_id": 84, "context_tokens": 420000, "context_tokens_k": 420, "tokens_since_compaction_k": 420, "mean_score": 483.38, "p50": 500.0, "p90": 786.0, "mean_score_raw": 515.23, "mean_confidence": 1.0, "n_sessions_contributing": 13, "total_steps": 26, "slope_d5k": -22.7}, {"bucket_id": 85, "context_tokens": 425000, "context_tokens_k": 425, "tokens_since_compaction_k": 425, "mean_score": 495.0, "p50": 500.0, "p90": 786.0, "mean_score_raw": 430.0, "mean_confidence": 1.0, "n_sessions_contributing": 12, "total_steps": 24, "slope_d5k": 11.62}, {"bucket_id": 86, "context_tokens": 430000, "context_tokens_k": 430, "tokens_since_compaction_k": 430, "mean_score": 501.36, "p50": 500.0, "p90": 786.0, "mean_score_raw": 470.23, "mean_confidence": 1.0, "n_sessions_contributing": 12, "total_steps": 22, "slope_d5k": 6.36}, {"bucket_id": 87, "context_tokens": 435000, "context_tokens_k": 435, "tokens_since_compaction_k": 435, "mean_score": 540.6, "p50": 543.5, "p90": 796.5, "mean_score_raw": 552.2, "mean_confidence": 1.0, "n_sessions_contributing": 10, "total_steps": 20, "slope_d5k": 39.24}, {"bucket_id": 88, "context_tokens": 440000, "context_tokens_k": 440, "tokens_since_compaction_k": 440, "mean_score": 565.89, "p50": 514.67, "p90": 781.5, "mean_score_raw": 579.63, "mean_confidence": 1.0, "n_sessions_contributing": 10, "total_steps": 19, "slope_d5k": 25.29}, {"bucket_id": 89, "context_tokens": 445000, "context_tokens_k": 445, "tokens_since_compaction_k": 445, "mean_score": 581.38, "p50": 605.5, "p90": 773.0, "mean_score_raw": 581.62, "mean_confidence": 1.0, "n_sessions_contributing": 8, "total_steps": 16, "slope_d5k": 15.49}, {"bucket_id": 90, "context_tokens": 450000, "context_tokens_k": 450, "tokens_since_compaction_k": 450, "mean_score": 596.07, "p50": 726.75, "p90": 783.5, "mean_score_raw": 534.93, "mean_confidence": 1.0, "n_sessions_contributing": 8, "total_steps": 15, "slope_d5k": 14.69}, {"bucket_id": 91, "context_tokens": 455000, "context_tokens_k": 455, "tokens_since_compaction_k": 455, "mean_score": 684.0, "p50": 766.0, "p90": 786.0, "mean_score_raw": 683.5, "mean_confidence": 1.0, "n_sessions_contributing": 6, "total_steps": 12, "slope_d5k": 87.93}, {"bucket_id": 92, "context_tokens": 460000, "context_tokens_k": 460, "tokens_since_compaction_k": 460, "mean_score": 723.36, "p50": 780.0, "p90": 805.95, "mean_score_raw": 714.73, "mean_confidence": 1.0, "n_sessions_contributing": 6, "total_steps": 11, "slope_d5k": 39.36}];
+    const recoveryData = [{"tokens_at_compaction_k": 175, "n_compactions": 1, "mean_pre_rot_score": 1.0, "mean_post_rot_score": 1.0, "mean_recovery_ratio": 1.0, "mean_memory_latency_steps": 1.0, "mean_memory_writes_after": 2.0, "lost_state_fraction": 0.0}, {"tokens_at_compaction_k": 200, "n_compactions": 2, "mean_pre_rot_score": 1.0, "mean_post_rot_score": 1.0, "mean_recovery_ratio": 1.0, "mean_memory_latency_steps": 1.0, "mean_memory_writes_after": 2.0, "lost_state_fraction": 0.0}, {"tokens_at_compaction_k": 225, "n_compactions": 3, "mean_pre_rot_score": 42.1, "mean_post_rot_score": 1.0, "mean_recovery_ratio": 0.669, "mean_memory_latency_steps": 1.0, "mean_memory_writes_after": 2.0, "lost_state_fraction": 0.0}, {"tokens_at_compaction_k": 250, "n_compactions": 1, "mean_pre_rot_score": 500.0, "mean_post_rot_score": 1.0, "mean_recovery_ratio": 0.002, "mean_memory_latency_steps": 1.0, "mean_memory_writes_after": 2.0, "lost_state_fraction": 0.0}, {"tokens_at_compaction_k": 275, "n_compactions": 2, "mean_pre_rot_score": 731.3, "mean_post_rot_score": 784.3, "mean_recovery_ratio": 1.065, "mean_memory_latency_steps": 6.0, "mean_memory_writes_after": 5.0, "lost_state_fraction": 1.0}, {"tokens_at_compaction_k": 300, "n_compactions": 1, "mean_pre_rot_score": 833.5, "mean_post_rot_score": 767.5, "mean_recovery_ratio": 0.921, "mean_memory_latency_steps": 6.0, "mean_memory_writes_after": 5.0, "lost_state_fraction": 1.0}, {"tokens_at_compaction_k": 325, "n_compactions": 1, "mean_pre_rot_score": 788.1, "mean_post_rot_score": 977.3, "mean_recovery_ratio": 1.24, "mean_memory_latency_steps": 6.0, "mean_memory_writes_after": 5.0, "lost_state_fraction": 1.0}, {"tokens_at_compaction_k": 350, "n_compactions": 2, "mean_pre_rot_score": 776.8, "mean_post_rot_score": 977.3, "mean_recovery_ratio": 1.258, "mean_memory_latency_steps": 6.0, "mean_memory_writes_after": 5.0, "lost_state_fraction": 1.0}, {"tokens_at_compaction_k": 375, "n_compactions": 1, "mean_pre_rot_score": 833.5, "mean_post_rot_score": 750.2, "mean_recovery_ratio": 0.9, "mean_memory_latency_steps": 6.0, "mean_memory_writes_after": 5.0, "lost_state_fraction": 1.0}];
+    const strat14cData = [{"stratum": "pre_compaction", "bucket_id": 2, "tokens_since_compaction_k": 10, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 7, "n_sessions": 7}, {"stratum": "pre_compaction", "bucket_id": 3, "tokens_since_compaction_k": 15, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 4, "tokens_since_compaction_k": 20, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 31, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 5, "tokens_since_compaction_k": 25, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 32, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 6, "tokens_since_compaction_k": 30, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 27, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 7, "tokens_since_compaction_k": 35, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 29, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 8, "tokens_since_compaction_k": 40, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 9, "tokens_since_compaction_k": 45, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 10, "tokens_since_compaction_k": 50, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 11, "tokens_since_compaction_k": 55, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 12, "tokens_since_compaction_k": 60, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 13, "tokens_since_compaction_k": 65, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 14, "tokens_since_compaction_k": 70, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 15, "tokens_since_compaction_k": 75, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 16, "tokens_since_compaction_k": 80, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 17, "tokens_since_compaction_k": 85, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 18, "tokens_since_compaction_k": 90, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 19, "tokens_since_compaction_k": 95, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 20, "tokens_since_compaction_k": 100, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 21, "tokens_since_compaction_k": 105, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 22, "tokens_since_compaction_k": 110, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 23, "tokens_since_compaction_k": 115, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 30, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 24, "tokens_since_compaction_k": 120, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 29, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 25, "tokens_since_compaction_k": 125, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 31, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 26, "tokens_since_compaction_k": 130, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 27, "tokens_since_compaction_k": 135, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 30, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 28, "tokens_since_compaction_k": 140, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 30, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 29, "tokens_since_compaction_k": 145, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 30, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 30, "tokens_since_compaction_k": 150, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 31, "tokens_since_compaction_k": 155, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 29, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 32, "tokens_since_compaction_k": 160, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 33, "tokens_since_compaction_k": 165, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 34, "tokens_since_compaction_k": 170, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 28, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 35, "tokens_since_compaction_k": 175, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 29, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 36, "tokens_since_compaction_k": 180, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 27, "n_sessions": 14}, {"stratum": "pre_compaction", "bucket_id": 37, "tokens_since_compaction_k": 185, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 26, "n_sessions": 13}, {"stratum": "pre_compaction", "bucket_id": 38, "tokens_since_compaction_k": 190, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 26, "n_sessions": 13}, {"stratum": "pre_compaction", "bucket_id": 39, "tokens_since_compaction_k": 195, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 26, "n_sessions": 13}, {"stratum": "pre_compaction", "bucket_id": 40, "tokens_since_compaction_k": 200, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 25, "n_sessions": 13}, {"stratum": "pre_compaction", "bucket_id": 41, "tokens_since_compaction_k": 205, "mean_score": 9.0, "p50": 1.0, "p90": 29.8, "total_steps": 24, "n_sessions": 12}, {"stratum": "pre_compaction", "bucket_id": 42, "tokens_since_compaction_k": 210, "mean_score": 9.35, "p50": 1.0, "p90": 34.6, "total_steps": 23, "n_sessions": 12}, {"stratum": "pre_compaction", "bucket_id": 43, "tokens_since_compaction_k": 215, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 22, "n_sessions": 11}, {"stratum": "pre_compaction", "bucket_id": 44, "tokens_since_compaction_k": 220, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 22, "n_sessions": 11}, {"stratum": "pre_compaction", "bucket_id": 45, "tokens_since_compaction_k": 225, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 21, "n_sessions": 11}, {"stratum": "pre_compaction", "bucket_id": 46, "tokens_since_compaction_k": 230, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 19, "n_sessions": 10}, {"stratum": "pre_compaction", "bucket_id": 47, "tokens_since_compaction_k": 235, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 19, "n_sessions": 9}, {"stratum": "pre_compaction", "bucket_id": 48, "tokens_since_compaction_k": 240, "mean_score": 87.44, "p50": 1.0, "p90": 434.0, "total_steps": 18, "n_sessions": 9}, {"stratum": "pre_compaction", "bucket_id": 49, "tokens_since_compaction_k": 245, "mean_score": 63.38, "p50": 1.0, "p90": 350.3, "total_steps": 16, "n_sessions": 8}, {"stratum": "pre_compaction", "bucket_id": 50, "tokens_since_compaction_k": 250, "mean_score": 16.56, "p50": 1.0, "p90": 67.4, "total_steps": 16, "n_sessions": 8}, {"stratum": "pre_compaction", "bucket_id": 51, "tokens_since_compaction_k": 255, "mean_score": 10.5, "p50": 1.0, "p90": 58.76, "total_steps": 16, "n_sessions": 7}, {"stratum": "pre_compaction", "bucket_id": 52, "tokens_since_compaction_k": 260, "mean_score": 133.87, "p50": 41.75, "p90": 500.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "pre_compaction", "bucket_id": 53, "tokens_since_compaction_k": 265, "mean_score": 257.14, "p50": 170.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "pre_compaction", "bucket_id": 54, "tokens_since_compaction_k": 270, "mean_score": 428.71, "p50": 500.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "pre_compaction", "bucket_id": 55, "tokens_since_compaction_k": 275, "mean_score": 497.69, "p50": 500.0, "p90": 655.6, "total_steps": 13, "n_sessions": 7}, {"stratum": "pre_compaction", "bucket_id": 56, "tokens_since_compaction_k": 280, "mean_score": 564.0, "p50": 500.0, "p90": 696.0, "total_steps": 12, "n_sessions": 6}, {"stratum": "pre_compaction", "bucket_id": 57, "tokens_since_compaction_k": 285, "mean_score": 591.0, "p50": 586.5, "p90": 694.9, "total_steps": 12, "n_sessions": 6}, {"stratum": "pre_compaction", "bucket_id": 58, "tokens_since_compaction_k": 290, "mean_score": 591.0, "p50": 586.5, "p90": 694.9, "total_steps": 12, "n_sessions": 6}, {"stratum": "pre_compaction", "bucket_id": 59, "tokens_since_compaction_k": 295, "mean_score": 579.0, "p50": 632.0, "p90": 695.95, "total_steps": 11, "n_sessions": 6}, {"stratum": "pre_compaction", "bucket_id": 60, "tokens_since_compaction_k": 300, "mean_score": 647.2, "p50": 676.0, "p90": 697.0, "total_steps": 10, "n_sessions": 5}, {"stratum": "pre_compaction", "bucket_id": 61, "tokens_since_compaction_k": 305, "mean_score": 609.2, "p50": 642.0, "p90": 707.0, "total_steps": 10, "n_sessions": 5}, {"stratum": "pre_compaction", "bucket_id": 62, "tokens_since_compaction_k": 310, "mean_score": 623.11, "p50": 655.75, "p90": 707.0, "total_steps": 9, "n_sessions": 5}, {"stratum": "pre_compaction", "bucket_id": 63, "tokens_since_compaction_k": 315, "mean_score": 603.75, "p50": 636.5, "p90": 642.0, "total_steps": 8, "n_sessions": 4}, {"stratum": "pre_compaction", "bucket_id": 64, "tokens_since_compaction_k": 320, "mean_score": 617.5, "p50": 636.5, "p90": 697.0, "total_steps": 8, "n_sessions": 4}, {"stratum": "pre_compaction", "bucket_id": 65, "tokens_since_compaction_k": 325, "mean_score": 613.43, "p50": 633.33, "p90": 697.0, "total_steps": 7, "n_sessions": 4}, {"stratum": "pre_compaction", "bucket_id": 66, "tokens_since_compaction_k": 330, "mean_score": 599.0, "p50": 621.0, "p90": 676.0, "total_steps": 6, "n_sessions": 3}, {"stratum": "pre_compaction", "bucket_id": 67, "tokens_since_compaction_k": 335, "mean_score": 599.0, "p50": 621.0, "p90": 676.0, "total_steps": 6, "n_sessions": 3}, {"stratum": "pre_compaction", "bucket_id": 68, "tokens_since_compaction_k": 340, "mean_score": 625.71, "p50": 676.0, "p90": 676.0, "total_steps": 7, "n_sessions": 3}, {"stratum": "pre_compaction", "bucket_id": 69, "tokens_since_compaction_k": 345, "mean_score": 665.2, "p50": 667.5, "p90": 690.0, "total_steps": 5, "n_sessions": 3}, {"stratum": "pre_compaction", "bucket_id": 70, "tokens_since_compaction_k": 350, "mean_score": 612.5, "p50": 654.25, "p90": 676.0, "total_steps": 6, "n_sessions": 3}, {"stratum": "pre_compaction", "bucket_id": 71, "tokens_since_compaction_k": 355, "mean_score": 588.0, "p50": 588.0, "p90": 676.0, "total_steps": 4, "n_sessions": 2}, {"stratum": "pre_compaction", "bucket_id": 72, "tokens_since_compaction_k": 360, "mean_score": 529.33, "p50": 529.33, "p90": 588.0, "total_steps": 3, "n_sessions": 2}, {"stratum": "pre_compaction", "bucket_id": 73, "tokens_since_compaction_k": 365, "mean_score": 500.0, "p50": 500.0, "p90": 500.0, "total_steps": 2, "n_sessions": 1}, {"stratum": "pre_compaction", "bucket_id": 74, "tokens_since_compaction_k": 370, "mean_score": 500.0, "p50": 500.0, "p90": 500.0, "total_steps": 2, "n_sessions": 1}, {"stratum": "pre_compaction", "bucket_id": 75, "tokens_since_compaction_k": 375, "mean_score": 578.0, "p50": 578.0, "p90": 578.0, "total_steps": 1, "n_sessions": 1}, {"stratum": "post_compaction_saved_ok", "bucket_id": 3, "tokens_since_compaction_k": 15, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 11, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 4, "tokens_since_compaction_k": 20, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 16, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 5, "tokens_since_compaction_k": 25, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 6, "tokens_since_compaction_k": 30, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 7, "tokens_since_compaction_k": 35, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 8, "tokens_since_compaction_k": 40, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 9, "tokens_since_compaction_k": 45, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 10, "tokens_since_compaction_k": 50, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 11, "tokens_since_compaction_k": 55, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 12, "tokens_since_compaction_k": 60, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 13, "tokens_since_compaction_k": 65, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 14, "tokens_since_compaction_k": 70, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 15, "tokens_since_compaction_k": 75, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 16, "tokens_since_compaction_k": 80, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 17, "tokens_since_compaction_k": 85, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 18, "tokens_since_compaction_k": 90, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 19, "tokens_since_compaction_k": 95, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 20, "tokens_since_compaction_k": 100, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 21, "tokens_since_compaction_k": 105, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 22, "tokens_since_compaction_k": 110, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 23, "tokens_since_compaction_k": 115, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 17, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 24, "tokens_since_compaction_k": 120, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 25, "tokens_since_compaction_k": 125, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 26, "tokens_since_compaction_k": 130, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 16, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 27, "tokens_since_compaction_k": 135, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 28, "tokens_since_compaction_k": 140, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 29, "tokens_since_compaction_k": 145, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 30, "tokens_since_compaction_k": 150, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 31, "tokens_since_compaction_k": 155, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 32, "tokens_since_compaction_k": 160, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 33, "tokens_since_compaction_k": 165, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 34, "tokens_since_compaction_k": 170, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 35, "tokens_since_compaction_k": 175, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 36, "tokens_since_compaction_k": 180, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 37, "tokens_since_compaction_k": 185, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 38, "tokens_since_compaction_k": 190, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 39, "tokens_since_compaction_k": 195, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 40, "tokens_since_compaction_k": 200, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 41, "tokens_since_compaction_k": 205, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 42, "tokens_since_compaction_k": 210, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 43, "tokens_since_compaction_k": 215, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 44, "tokens_since_compaction_k": 220, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 45, "tokens_since_compaction_k": 225, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 46, "tokens_since_compaction_k": 230, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 47, "tokens_since_compaction_k": 235, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 48, "tokens_since_compaction_k": 240, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 49, "tokens_since_compaction_k": 245, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 50, "tokens_since_compaction_k": 250, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 51, "tokens_since_compaction_k": 255, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 52, "tokens_since_compaction_k": 260, "mean_score": 1.0, "p50": 1.0, "p90": 1.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 53, "tokens_since_compaction_k": 265, "mean_score": 143.57, "p50": 1.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 54, "tokens_since_compaction_k": 270, "mean_score": 241.86, "p50": 190.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 55, "tokens_since_compaction_k": 275, "mean_score": 220.71, "p50": 42.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 56, "tokens_since_compaction_k": 280, "mean_score": 352.77, "p50": 500.0, "p90": 500.0, "total_steps": 13, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 57, "tokens_since_compaction_k": 285, "mean_score": 395.07, "p50": 500.0, "p90": 526.25, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 58, "tokens_since_compaction_k": 290, "mean_score": 382.57, "p50": 500.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 59, "tokens_since_compaction_k": 295, "mean_score": 411.71, "p50": 500.0, "p90": 600.6, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 60, "tokens_since_compaction_k": 300, "mean_score": 393.86, "p50": 500.0, "p90": 547.2, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 61, "tokens_since_compaction_k": 305, "mean_score": 350.71, "p50": 500.0, "p90": 609.6, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 62, "tokens_since_compaction_k": 310, "mean_score": 238.29, "p50": 42.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 63, "tokens_since_compaction_k": 315, "mean_score": 238.29, "p50": 42.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 64, "tokens_since_compaction_k": 320, "mean_score": 238.29, "p50": 42.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 65, "tokens_since_compaction_k": 325, "mean_score": 172.86, "p50": 42.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 66, "tokens_since_compaction_k": 330, "mean_score": 238.29, "p50": 42.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 67, "tokens_since_compaction_k": 335, "mean_score": 300.86, "p50": 500.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 68, "tokens_since_compaction_k": 340, "mean_score": 291.4, "p50": 419.0, "p90": 500.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 69, "tokens_since_compaction_k": 345, "mean_score": 297.86, "p50": 500.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 70, "tokens_since_compaction_k": 350, "mean_score": 462.0, "p50": 500.0, "p90": 629.75, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 71, "tokens_since_compaction_k": 355, "mean_score": 377.87, "p50": 500.0, "p90": 500.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 72, "tokens_since_compaction_k": 360, "mean_score": 259.43, "p50": 190.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 73, "tokens_since_compaction_k": 365, "mean_score": 259.43, "p50": 190.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 74, "tokens_since_compaction_k": 370, "mean_score": 251.57, "p50": 135.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 75, "tokens_since_compaction_k": 375, "mean_score": 257.57, "p50": 177.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 76, "tokens_since_compaction_k": 380, "mean_score": 273.73, "p50": 257.75, "p90": 500.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 77, "tokens_since_compaction_k": 385, "mean_score": 352.77, "p50": 500.0, "p90": 500.0, "total_steps": 13, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 78, "tokens_since_compaction_k": 390, "mean_score": 372.4, "p50": 500.0, "p90": 500.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 79, "tokens_since_compaction_k": 395, "mean_score": 340.27, "p50": 500.0, "p90": 500.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 80, "tokens_since_compaction_k": 400, "mean_score": 304.29, "p50": 500.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 81, "tokens_since_compaction_k": 405, "mean_score": 275.86, "p50": 232.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 82, "tokens_since_compaction_k": 410, "mean_score": 349.71, "p50": 500.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_saved_ok", "bucket_id": 83, "tokens_since_compaction_k": 415, "mean_score": 398.0, "p50": 500.0, "p90": 500.0, "total_steps": 12, "n_sessions": 6}, {"stratum": "post_compaction_saved_ok", "bucket_id": 84, "tokens_since_compaction_k": 420, "mean_score": 407.17, "p50": 500.0, "p90": 500.0, "total_steps": 12, "n_sessions": 6}, {"stratum": "post_compaction_saved_ok", "bucket_id": 85, "tokens_since_compaction_k": 425, "mean_score": 408.4, "p50": 500.0, "p90": 500.0, "total_steps": 10, "n_sessions": 5}, {"stratum": "post_compaction_saved_ok", "bucket_id": 86, "tokens_since_compaction_k": 430, "mean_score": 312.25, "p50": 414.67, "p90": 500.0, "total_steps": 8, "n_sessions": 5}, {"stratum": "post_compaction_saved_ok", "bucket_id": 87, "tokens_since_compaction_k": 435, "mean_score": 376.33, "p50": 500.0, "p90": 587.0, "total_steps": 6, "n_sessions": 3}, {"stratum": "post_compaction_saved_ok", "bucket_id": 88, "tokens_since_compaction_k": 440, "mean_score": 417.2, "p50": 442.75, "p90": 544.0, "total_steps": 5, "n_sessions": 3}, {"stratum": "post_compaction_saved_ok", "bucket_id": 89, "tokens_since_compaction_k": 445, "mean_score": 500.0, "p50": 500.0, "p90": 500.0, "total_steps": 2, "n_sessions": 1}, {"stratum": "post_compaction_saved_ok", "bucket_id": 90, "tokens_since_compaction_k": 450, "mean_score": 271.0, "p50": 271.0, "p90": 271.0, "total_steps": 1, "n_sessions": 1}, {"stratum": "post_compaction_lost_state", "bucket_id": 3, "tokens_since_compaction_k": 15, "mean_score": 503.38, "p50": 509.5, "p90": 609.3, "total_steps": 13, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 4, "tokens_since_compaction_k": 20, "mean_score": 480.0, "p50": 505.5, "p90": 598.2, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 5, "tokens_since_compaction_k": 25, "mean_score": 527.07, "p50": 518.8, "p90": 574.5, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 6, "tokens_since_compaction_k": 30, "mean_score": 526.29, "p50": 500.0, "p90": 579.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 7, "tokens_since_compaction_k": 35, "mean_score": 513.86, "p50": 500.0, "p90": 569.2, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 8, "tokens_since_compaction_k": 40, "mean_score": 184.57, "p50": 132.0, "p90": 426.4, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 9, "tokens_since_compaction_k": 45, "mean_score": 132.0, "p50": 132.0, "p90": 132.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 10, "tokens_since_compaction_k": 50, "mean_score": 123.14, "p50": 132.0, "p90": 132.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 11, "tokens_since_compaction_k": 55, "mean_score": 96.71, "p50": 91.0, "p90": 111.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 12, "tokens_since_compaction_k": 60, "mean_score": 93.86, "p50": 91.0, "p90": 107.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 13, "tokens_since_compaction_k": 65, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 14, "tokens_since_compaction_k": 70, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 15, "tokens_since_compaction_k": 75, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 16, "tokens_since_compaction_k": 80, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 17, "tokens_since_compaction_k": 85, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 18, "tokens_since_compaction_k": 90, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 19, "tokens_since_compaction_k": 95, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 20, "tokens_since_compaction_k": 100, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 21, "tokens_since_compaction_k": 105, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 22, "tokens_since_compaction_k": 110, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 23, "tokens_since_compaction_k": 115, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 24, "tokens_since_compaction_k": 120, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 25, "tokens_since_compaction_k": 125, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 26, "tokens_since_compaction_k": 130, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 27, "tokens_since_compaction_k": 135, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 16, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 28, "tokens_since_compaction_k": 140, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 29, "tokens_since_compaction_k": 145, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 30, "tokens_since_compaction_k": 150, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 31, "tokens_since_compaction_k": 155, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 32, "tokens_since_compaction_k": 160, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 33, "tokens_since_compaction_k": 165, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 34, "tokens_since_compaction_k": 170, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 35, "tokens_since_compaction_k": 175, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 36, "tokens_since_compaction_k": 180, "mean_score": 91.0, "p50": 91.0, "p90": 91.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 37, "tokens_since_compaction_k": 185, "mean_score": 111.27, "p50": 91.0, "p90": 163.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 38, "tokens_since_compaction_k": 190, "mean_score": 126.14, "p50": 135.0, "p90": 174.2, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 39, "tokens_since_compaction_k": 195, "mean_score": 111.43, "p50": 91.0, "p90": 179.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 40, "tokens_since_compaction_k": 200, "mean_score": 169.86, "p50": 91.0, "p90": 438.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 41, "tokens_since_compaction_k": 205, "mean_score": 207.86, "p50": 91.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 42, "tokens_since_compaction_k": 210, "mean_score": 207.86, "p50": 91.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 43, "tokens_since_compaction_k": 215, "mean_score": 284.43, "p50": 218.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 44, "tokens_since_compaction_k": 220, "mean_score": 207.86, "p50": 91.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 45, "tokens_since_compaction_k": 225, "mean_score": 174.0, "p50": 91.0, "p90": 435.4, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 46, "tokens_since_compaction_k": 230, "mean_score": 258.43, "p50": 204.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 47, "tokens_since_compaction_k": 235, "mean_score": 244.71, "p50": 177.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 48, "tokens_since_compaction_k": 240, "mean_score": 300.57, "p50": 204.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 49, "tokens_since_compaction_k": 245, "mean_score": 308.62, "p50": 232.0, "p90": 500.0, "total_steps": 16, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 50, "tokens_since_compaction_k": 250, "mean_score": 402.27, "p50": 500.0, "p90": 500.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 51, "tokens_since_compaction_k": 255, "mean_score": 308.2, "p50": 230.25, "p90": 500.0, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 52, "tokens_since_compaction_k": 260, "mean_score": 420.43, "p50": 500.0, "p90": 500.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 53, "tokens_since_compaction_k": 265, "mean_score": 473.07, "p50": 500.0, "p90": 535.5, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 54, "tokens_since_compaction_k": 270, "mean_score": 462.86, "p50": 500.0, "p90": 553.8, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 55, "tokens_since_compaction_k": 275, "mean_score": 507.4, "p50": 500.0, "p90": 730.2, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 56, "tokens_since_compaction_k": 280, "mean_score": 478.43, "p50": 500.0, "p90": 737.8, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 57, "tokens_since_compaction_k": 285, "mean_score": 539.43, "p50": 500.0, "p90": 775.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 58, "tokens_since_compaction_k": 290, "mean_score": 586.71, "p50": 545.0, "p90": 786.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 59, "tokens_since_compaction_k": 295, "mean_score": 594.71, "p50": 500.0, "p90": 779.2, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 60, "tokens_since_compaction_k": 300, "mean_score": 616.29, "p50": 500.0, "p90": 784.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 61, "tokens_since_compaction_k": 305, "mean_score": 575.71, "p50": 500.0, "p90": 766.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 62, "tokens_since_compaction_k": 310, "mean_score": 582.0, "p50": 545.0, "p90": 782.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 63, "tokens_since_compaction_k": 315, "mean_score": 542.57, "p50": 500.0, "p90": 759.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 64, "tokens_since_compaction_k": 320, "mean_score": 622.86, "p50": 587.0, "p90": 782.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 65, "tokens_since_compaction_k": 325, "mean_score": 626.86, "p50": 656.0, "p90": 782.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 66, "tokens_since_compaction_k": 330, "mean_score": 573.71, "p50": 656.0, "p90": 781.2, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 67, "tokens_since_compaction_k": 335, "mean_score": 563.71, "p50": 500.0, "p90": 782.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 68, "tokens_since_compaction_k": 340, "mean_score": 529.69, "p50": 690.0, "p90": 786.0, "total_steps": 13, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 69, "tokens_since_compaction_k": 345, "mean_score": 555.2, "p50": 690.0, "p90": 809.25, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 70, "tokens_since_compaction_k": 350, "mean_score": 514.14, "p50": 518.0, "p90": 786.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 71, "tokens_since_compaction_k": 355, "mean_score": 627.29, "p50": 576.0, "p90": 782.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 72, "tokens_since_compaction_k": 360, "mean_score": 663.36, "p50": 731.0, "p90": 782.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 73, "tokens_since_compaction_k": 365, "mean_score": 687.71, "p50": 745.0, "p90": 786.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 74, "tokens_since_compaction_k": 370, "mean_score": 617.86, "p50": 731.0, "p90": 784.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 75, "tokens_since_compaction_k": 375, "mean_score": 632.4, "p50": 752.0, "p90": 781.25, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 76, "tokens_since_compaction_k": 380, "mean_score": 535.69, "p50": 699.5, "p90": 784.4, "total_steps": 13, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 77, "tokens_since_compaction_k": 385, "mean_score": 552.0, "p50": 752.0, "p90": 786.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 78, "tokens_since_compaction_k": 390, "mean_score": 546.29, "p50": 711.0, "p90": 794.8, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 79, "tokens_since_compaction_k": 395, "mean_score": 630.2, "p50": 711.0, "p90": 799.25, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 80, "tokens_since_compaction_k": 400, "mean_score": 586.67, "p50": 500.0, "p90": 799.25, "total_steps": 15, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 81, "tokens_since_compaction_k": 405, "mean_score": 659.14, "p50": 766.0, "p90": 786.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 82, "tokens_since_compaction_k": 410, "mean_score": 643.43, "p50": 711.0, "p90": 786.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 83, "tokens_since_compaction_k": 415, "mean_score": 598.71, "p50": 721.0, "p90": 786.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 84, "tokens_since_compaction_k": 420, "mean_score": 548.71, "p50": 711.0, "p90": 786.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 85, "tokens_since_compaction_k": 425, "mean_score": 556.86, "p50": 776.0, "p90": 786.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 86, "tokens_since_compaction_k": 430, "mean_score": 609.43, "p50": 776.0, "p90": 786.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 87, "tokens_since_compaction_k": 435, "mean_score": 611.0, "p50": 766.0, "p90": 802.8, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 88, "tokens_since_compaction_k": 440, "mean_score": 619.0, "p50": 711.0, "p90": 784.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 89, "tokens_since_compaction_k": 445, "mean_score": 593.0, "p50": 711.0, "p90": 774.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 90, "tokens_since_compaction_k": 450, "mean_score": 619.29, "p50": 731.0, "p90": 784.0, "total_steps": 14, "n_sessions": 7}, {"stratum": "post_compaction_lost_state", "bucket_id": 91, "tokens_since_compaction_k": 455, "mean_score": 684.0, "p50": 766.0, "p90": 786.0, "total_steps": 12, "n_sessions": 6}, {"stratum": "post_compaction_lost_state", "bucket_id": 92, "tokens_since_compaction_k": 460, "mean_score": 723.36, "p50": 780.0, "p90": 805.95, "total_steps": 11, "n_sessions": 6}, {"stratum": "post_compaction_lost_state", "bucket_id": 93, "tokens_since_compaction_k": 465, "mean_score": 773.25, "p50": 776.0, "p90": 786.0, "total_steps": 8, "n_sessions": 4}, {"stratum": "post_compaction_lost_state", "bucket_id": 94, "tokens_since_compaction_k": 470, "mean_score": 767.71, "p50": 780.0, "p90": 786.0, "total_steps": 7, "n_sessions": 4}, {"stratum": "post_compaction_lost_state", "bucket_id": 95, "tokens_since_compaction_k": 475, "mean_score": 762.67, "p50": 766.0, "p90": 786.0, "total_steps": 9, "n_sessions": 4}, {"stratum": "post_compaction_lost_state", "bucket_id": 96, "tokens_since_compaction_k": 480, "mean_score": 761.14, "p50": 757.33, "p90": 786.0, "total_steps": 7, "n_sessions": 4}, {"stratum": "post_compaction_lost_state", "bucket_id": 97, "tokens_since_compaction_k": 485, "mean_score": 776.22, "p50": 786.0, "p90": 786.0, "total_steps": 9, "n_sessions": 4}, {"stratum": "post_compaction_lost_state", "bucket_id": 98, "tokens_since_compaction_k": 490, "mean_score": 781.0, "p50": 786.0, "p90": 786.0, "total_steps": 8, "n_sessions": 4}, {"stratum": "post_compaction_lost_state", "bucket_id": 99, "tokens_since_compaction_k": 495, "mean_score": 778.5, "p50": 781.0, "p90": 786.0, "total_steps": 8, "n_sessions": 4}, {"stratum": "post_compaction_lost_state", "bucket_id": 100, "tokens_since_compaction_k": 500, "mean_score": 775.0, "p50": 781.0, "p90": 786.0, "total_steps": 8, "n_sessions": 4}, {"stratum": "post_compaction_lost_state", "bucket_id": 101, "tokens_since_compaction_k": 505, "mean_score": 755.33, "p50": 748.0, "p90": 776.0, "total_steps": 3, "n_sessions": 3}];
+    const taskTypeData = [{"task_type": "bugfix", "bucket_id": 2, "tokens_since_compaction_k": 10, "mean_score": 1.0, "p90": 1.0, "total_steps": 1, "n_sessions": 1}, {"task_type": "bugfix", "bucket_id": 3, "tokens_since_compaction_k": 15, "mean_score": 90.5, "p90": 484.3, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 4, "tokens_since_compaction_k": 20, "mean_score": 87.46, "p90": 478.7, "total_steps": 13, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 5, "tokens_since_compaction_k": 25, "mean_score": 79.92, "p90": 437.05, "total_steps": 13, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 6, "tokens_since_compaction_k": 30, "mean_score": 94.67, "p90": 506.8, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 7, "tokens_since_compaction_k": 35, "mean_score": 86.5, "p90": 462.7, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 8, "tokens_since_compaction_k": 40, "mean_score": 22.83, "p90": 118.9, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 9, "tokens_since_compaction_k": 45, "mean_score": 22.83, "p90": 118.9, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 10, "tokens_since_compaction_k": 50, "mean_score": 22.83, "p90": 118.9, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 11, "tokens_since_compaction_k": 55, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 12, "tokens_since_compaction_k": 60, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 13, "tokens_since_compaction_k": 65, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 14, "tokens_since_compaction_k": 70, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 15, "tokens_since_compaction_k": 75, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 16, "tokens_since_compaction_k": 80, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 17, "tokens_since_compaction_k": 85, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 18, "tokens_since_compaction_k": 90, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 19, "tokens_since_compaction_k": 95, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 20, "tokens_since_compaction_k": 100, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 21, "tokens_since_compaction_k": 105, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 22, "tokens_since_compaction_k": 110, "mean_score": 14.85, "p90": 80.2, "total_steps": 13, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 23, "tokens_since_compaction_k": 115, "mean_score": 13.86, "p90": 73.0, "total_steps": 14, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 24, "tokens_since_compaction_k": 120, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 25, "tokens_since_compaction_k": 125, "mean_score": 14.85, "p90": 77.5, "total_steps": 13, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 26, "tokens_since_compaction_k": 130, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 27, "tokens_since_compaction_k": 135, "mean_score": 21.77, "p90": 91.0, "total_steps": 13, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 28, "tokens_since_compaction_k": 140, "mean_score": 14.85, "p90": 77.5, "total_steps": 13, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 29, "tokens_since_compaction_k": 145, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 30, "tokens_since_compaction_k": 150, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 31, "tokens_since_compaction_k": 155, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 32, "tokens_since_compaction_k": 160, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 33, "tokens_since_compaction_k": 165, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 34, "tokens_since_compaction_k": 170, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 35, "tokens_since_compaction_k": 175, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 36, "tokens_since_compaction_k": 180, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 37, "tokens_since_compaction_k": 185, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 38, "tokens_since_compaction_k": 190, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 39, "tokens_since_compaction_k": 195, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 40, "tokens_since_compaction_k": 200, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 41, "tokens_since_compaction_k": 205, "mean_score": 32.0, "p90": 96.4, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 42, "tokens_since_compaction_k": 210, "mean_score": 32.0, "p90": 96.4, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 43, "tokens_since_compaction_k": 215, "mean_score": 16.0, "p90": 82.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 44, "tokens_since_compaction_k": 220, "mean_score": 14.85, "p90": 80.2, "total_steps": 13, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 45, "tokens_since_compaction_k": 225, "mean_score": 33.0, "p90": 168.2, "total_steps": 11, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 46, "tokens_since_compaction_k": 230, "mean_score": 46.11, "p90": 204.0, "total_steps": 9, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 47, "tokens_since_compaction_k": 235, "mean_score": 40.11, "p90": 177.0, "total_steps": 9, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 48, "tokens_since_compaction_k": 240, "mean_score": 51.75, "p90": 204.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 49, "tokens_since_compaction_k": 245, "mean_score": 167.33, "p90": 500.0, "total_steps": 9, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 50, "tokens_since_compaction_k": 250, "mean_score": 125.75, "p90": 500.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 51, "tokens_since_compaction_k": 255, "mean_score": 125.75, "p90": 500.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 52, "tokens_since_compaction_k": 260, "mean_score": 278.22, "p90": 500.0, "total_steps": 9, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 53, "tokens_since_compaction_k": 265, "mean_score": 375.25, "p90": 500.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 54, "tokens_since_compaction_k": 270, "mean_score": 375.25, "p90": 500.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 55, "tokens_since_compaction_k": 275, "mean_score": 307.5, "p90": 687.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 56, "tokens_since_compaction_k": 280, "mean_score": 432.25, "p90": 687.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 57, "tokens_since_compaction_k": 285, "mean_score": 419.25, "p90": 500.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 58, "tokens_since_compaction_k": 290, "mean_score": 490.75, "p90": 786.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 59, "tokens_since_compaction_k": 295, "mean_score": 566.0, "p90": 786.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 60, "tokens_since_compaction_k": 300, "mean_score": 506.25, "p90": 786.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 61, "tokens_since_compaction_k": 305, "mean_score": 527.25, "p90": 766.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 62, "tokens_since_compaction_k": 310, "mean_score": 506.25, "p90": 786.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 63, "tokens_since_compaction_k": 315, "mean_score": 385.5, "p90": 500.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 64, "tokens_since_compaction_k": 320, "mean_score": 385.5, "p90": 500.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 65, "tokens_since_compaction_k": 325, "mean_score": 271.0, "p90": 500.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 66, "tokens_since_compaction_k": 330, "mean_score": 385.5, "p90": 500.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 67, "tokens_since_compaction_k": 335, "mean_score": 385.5, "p90": 500.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 68, "tokens_since_compaction_k": 340, "mean_score": 423.22, "p90": 762.0, "total_steps": 9, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 69, "tokens_since_compaction_k": 345, "mean_score": 486.5, "p90": 762.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 70, "tokens_since_compaction_k": 350, "mean_score": 444.71, "p90": 673.0, "total_steps": 7, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 71, "tokens_since_compaction_k": 355, "mean_score": 353.33, "p90": 518.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 72, "tokens_since_compaction_k": 360, "mean_score": 424.33, "p90": 731.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 73, "tokens_since_compaction_k": 365, "mean_score": 588.67, "p90": 766.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 74, "tokens_since_compaction_k": 370, "mean_score": 588.67, "p90": 766.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 75, "tokens_since_compaction_k": 375, "mean_score": 592.0, "p90": 776.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 76, "tokens_since_compaction_k": 380, "mean_score": 578.86, "p90": 776.0, "total_steps": 7, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 77, "tokens_since_compaction_k": 385, "mean_score": 610.4, "p90": 776.0, "total_steps": 5, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 78, "tokens_since_compaction_k": 390, "mean_score": 584.86, "p90": 797.0, "total_steps": 7, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 79, "tokens_since_compaction_k": 395, "mean_score": 482.67, "p90": 807.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 80, "tokens_since_compaction_k": 400, "mean_score": 602.33, "p90": 807.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 81, "tokens_since_compaction_k": 405, "mean_score": 353.33, "p90": 786.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 82, "tokens_since_compaction_k": 410, "mean_score": 442.67, "p90": 786.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 83, "tokens_since_compaction_k": 415, "mean_score": 499.33, "p90": 766.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 84, "tokens_since_compaction_k": 420, "mean_score": 595.33, "p90": 786.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 85, "tokens_since_compaction_k": 425, "mean_score": 595.33, "p90": 786.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 86, "tokens_since_compaction_k": 430, "mean_score": 442.67, "p90": 786.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 87, "tokens_since_compaction_k": 435, "mean_score": 478.67, "p90": 807.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 88, "tokens_since_compaction_k": 440, "mean_score": 531.6, "p90": 786.0, "total_steps": 5, "n_sessions": 3}, {"task_type": "bugfix", "bucket_id": 89, "tokens_since_compaction_k": 445, "mean_score": 776.0, "p90": 776.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "bugfix", "bucket_id": 90, "tokens_since_compaction_k": 450, "mean_score": 776.0, "p90": 776.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "bugfix", "bucket_id": 91, "tokens_since_compaction_k": 455, "mean_score": 786.0, "p90": 786.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "bugfix", "bucket_id": 92, "tokens_since_compaction_k": 460, "mean_score": 786.0, "p90": 786.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "bugfix", "bucket_id": 93, "tokens_since_compaction_k": 465, "mean_score": 786.0, "p90": 786.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "bugfix", "bucket_id": 94, "tokens_since_compaction_k": 470, "mean_score": 786.0, "p90": 786.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "bugfix", "bucket_id": 95, "tokens_since_compaction_k": 475, "mean_score": 766.0, "p90": 766.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "bugfix", "bucket_id": 96, "tokens_since_compaction_k": 480, "mean_score": 786.0, "p90": 786.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "bugfix", "bucket_id": 97, "tokens_since_compaction_k": 485, "mean_score": 786.0, "p90": 786.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "bugfix", "bucket_id": 98, "tokens_since_compaction_k": 490, "mean_score": 786.0, "p90": 786.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "bugfix", "bucket_id": 99, "tokens_since_compaction_k": 495, "mean_score": 776.0, "p90": 776.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "bugfix", "bucket_id": 100, "tokens_since_compaction_k": 500, "mean_score": 776.0, "p90": 776.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "bugfix", "bucket_id": 101, "tokens_since_compaction_k": 505, "mean_score": 776.0, "p90": 776.0, "total_steps": 1, "n_sessions": 1}, {"task_type": "explore", "bucket_id": 3, "tokens_since_compaction_k": 15, "mean_score": 60.0, "p90": 358.93, "total_steps": 7, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 4, "tokens_since_compaction_k": 20, "mean_score": 119.33, "p90": 356.0, "total_steps": 9, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 5, "tokens_since_compaction_k": 25, "mean_score": 100.8, "p90": 500.0, "total_steps": 10, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 6, "tokens_since_compaction_k": 30, "mean_score": 143.57, "p90": 500.0, "total_steps": 7, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 7, "tokens_since_compaction_k": 35, "mean_score": 111.89, "p90": 500.0, "total_steps": 9, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 8, "tokens_since_compaction_k": 40, "mean_score": 33.75, "p90": 132.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 9, "tokens_since_compaction_k": 45, "mean_score": 33.75, "p90": 132.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 10, "tokens_since_compaction_k": 50, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 11, "tokens_since_compaction_k": 55, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 12, "tokens_since_compaction_k": 60, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 13, "tokens_since_compaction_k": 65, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 14, "tokens_since_compaction_k": 70, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 15, "tokens_since_compaction_k": 75, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 16, "tokens_since_compaction_k": 80, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 17, "tokens_since_compaction_k": 85, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 18, "tokens_since_compaction_k": 90, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 19, "tokens_since_compaction_k": 95, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 20, "tokens_since_compaction_k": 100, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 21, "tokens_since_compaction_k": 105, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 22, "tokens_since_compaction_k": 110, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 23, "tokens_since_compaction_k": 115, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 24, "tokens_since_compaction_k": 120, "mean_score": 21.0, "p90": 91.0, "total_steps": 9, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 25, "tokens_since_compaction_k": 125, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 26, "tokens_since_compaction_k": 130, "mean_score": 21.0, "p90": 91.0, "total_steps": 9, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 27, "tokens_since_compaction_k": 135, "mean_score": 31.0, "p90": 91.0, "total_steps": 9, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 28, "tokens_since_compaction_k": 140, "mean_score": 21.0, "p90": 91.0, "total_steps": 9, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 29, "tokens_since_compaction_k": 145, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 30, "tokens_since_compaction_k": 150, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 31, "tokens_since_compaction_k": 155, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 32, "tokens_since_compaction_k": 160, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 33, "tokens_since_compaction_k": 165, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 34, "tokens_since_compaction_k": 170, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 35, "tokens_since_compaction_k": 175, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 36, "tokens_since_compaction_k": 180, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 37, "tokens_since_compaction_k": 185, "mean_score": 34.5, "p90": 135.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 38, "tokens_since_compaction_k": 190, "mean_score": 34.5, "p90": 135.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 39, "tokens_since_compaction_k": 195, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 40, "tokens_since_compaction_k": 200, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 41, "tokens_since_compaction_k": 205, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 42, "tokens_since_compaction_k": 210, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 43, "tokens_since_compaction_k": 215, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 44, "tokens_since_compaction_k": 220, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 45, "tokens_since_compaction_k": 225, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 46, "tokens_since_compaction_k": 230, "mean_score": 125.75, "p90": 500.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 47, "tokens_since_compaction_k": 235, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 48, "tokens_since_compaction_k": 240, "mean_score": 152.0, "p90": 500.0, "total_steps": 7, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 49, "tokens_since_compaction_k": 245, "mean_score": 67.0, "p90": 232.0, "total_steps": 7, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 50, "tokens_since_compaction_k": 250, "mean_score": 167.33, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 51, "tokens_since_compaction_k": 255, "mean_score": 67.0, "p90": 232.0, "total_steps": 7, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 52, "tokens_since_compaction_k": 260, "mean_score": 167.33, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 53, "tokens_since_compaction_k": 265, "mean_score": 214.86, "p90": 500.0, "total_steps": 7, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 54, "tokens_since_compaction_k": 270, "mean_score": 230.33, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 55, "tokens_since_compaction_k": 275, "mean_score": 347.33, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 56, "tokens_since_compaction_k": 280, "mean_score": 419.67, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 57, "tokens_since_compaction_k": 285, "mean_score": 511.67, "p90": 535.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 58, "tokens_since_compaction_k": 290, "mean_score": 500.0, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 59, "tokens_since_compaction_k": 295, "mean_score": 500.0, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 60, "tokens_since_compaction_k": 300, "mean_score": 500.0, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 61, "tokens_since_compaction_k": 305, "mean_score": 500.0, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 62, "tokens_since_compaction_k": 310, "mean_score": 320.0, "p90": 516.0, "total_steps": 5, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 63, "tokens_since_compaction_k": 315, "mean_score": 271.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 64, "tokens_since_compaction_k": 320, "mean_score": 314.5, "p90": 587.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 65, "tokens_since_compaction_k": 325, "mean_score": 361.0, "p90": 680.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 66, "tokens_since_compaction_k": 330, "mean_score": 361.0, "p90": 680.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 67, "tokens_since_compaction_k": 335, "mean_score": 500.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 68, "tokens_since_compaction_k": 340, "mean_score": 500.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 69, "tokens_since_compaction_k": 345, "mean_score": 500.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 70, "tokens_since_compaction_k": 350, "mean_score": 500.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 71, "tokens_since_compaction_k": 355, "mean_score": 500.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 72, "tokens_since_compaction_k": 360, "mean_score": 500.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 73, "tokens_since_compaction_k": 365, "mean_score": 500.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 74, "tokens_since_compaction_k": 370, "mean_score": 271.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 75, "tokens_since_compaction_k": 375, "mean_score": 161.0, "p90": 280.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 76, "tokens_since_compaction_k": 380, "mean_score": 87.0, "p90": 132.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 77, "tokens_since_compaction_k": 385, "mean_score": 87.0, "p90": 132.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 78, "tokens_since_compaction_k": 390, "mean_score": 316.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 79, "tokens_since_compaction_k": 395, "mean_score": 500.0, "p90": 500.0, "total_steps": 5, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 80, "tokens_since_compaction_k": 400, "mean_score": 500.0, "p90": 500.0, "total_steps": 5, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 81, "tokens_since_compaction_k": 405, "mean_score": 500.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 82, "tokens_since_compaction_k": 410, "mean_score": 610.5, "p90": 721.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 83, "tokens_since_compaction_k": 415, "mean_score": 610.5, "p90": 721.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 84, "tokens_since_compaction_k": 420, "mean_score": 509.0, "p90": 518.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 85, "tokens_since_compaction_k": 425, "mean_score": 271.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 86, "tokens_since_compaction_k": 430, "mean_score": 347.33, "p90": 500.0, "total_steps": 3, "n_sessions": 2}, {"task_type": "explore", "bucket_id": 87, "tokens_since_compaction_k": 435, "mean_score": 500.0, "p90": 500.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "explore", "bucket_id": 88, "tokens_since_compaction_k": 440, "mean_score": 500.0, "p90": 500.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "explore", "bucket_id": 89, "tokens_since_compaction_k": 445, "mean_score": 500.0, "p90": 500.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "explore", "bucket_id": 90, "tokens_since_compaction_k": 450, "mean_score": 246.0, "p90": 246.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "explore", "bucket_id": 91, "tokens_since_compaction_k": 455, "mean_score": 500.0, "p90": 500.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "explore", "bucket_id": 92, "tokens_since_compaction_k": 460, "mean_score": 461.0, "p90": 461.0, "total_steps": 1, "n_sessions": 1}, {"task_type": "feature", "bucket_id": 2, "tokens_since_compaction_k": 10, "mean_score": 1.0, "p90": 1.0, "total_steps": 2, "n_sessions": 2}, {"task_type": "feature", "bucket_id": 3, "tokens_since_compaction_k": 15, "mean_score": 187.0, "p90": 606.2, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 4, "tokens_since_compaction_k": 20, "mean_score": 171.0, "p90": 590.95, "total_steps": 13, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 5, "tokens_since_compaction_k": 25, "mean_score": 181.17, "p90": 574.7, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 6, "tokens_since_compaction_k": 30, "mean_score": 181.17, "p90": 574.7, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 7, "tokens_since_compaction_k": 35, "mean_score": 181.17, "p90": 574.7, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 8, "tokens_since_compaction_k": 40, "mean_score": 44.67, "p90": 132.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 9, "tokens_since_compaction_k": 45, "mean_score": 44.67, "p90": 132.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 10, "tokens_since_compaction_k": 50, "mean_score": 44.67, "p90": 132.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 11, "tokens_since_compaction_k": 55, "mean_score": 34.33, "p90": 109.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 12, "tokens_since_compaction_k": 60, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 13, "tokens_since_compaction_k": 65, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 14, "tokens_since_compaction_k": 70, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 15, "tokens_since_compaction_k": 75, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 16, "tokens_since_compaction_k": 80, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 17, "tokens_since_compaction_k": 85, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 18, "tokens_since_compaction_k": 90, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 19, "tokens_since_compaction_k": 95, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 20, "tokens_since_compaction_k": 100, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 21, "tokens_since_compaction_k": 105, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 22, "tokens_since_compaction_k": 110, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 23, "tokens_since_compaction_k": 115, "mean_score": 26.71, "p90": 91.0, "total_steps": 14, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 24, "tokens_since_compaction_k": 120, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 25, "tokens_since_compaction_k": 125, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 26, "tokens_since_compaction_k": 130, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 27, "tokens_since_compaction_k": 135, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 28, "tokens_since_compaction_k": 140, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 29, "tokens_since_compaction_k": 145, "mean_score": 35.62, "p90": 91.0, "total_steps": 13, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 30, "tokens_since_compaction_k": 150, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 31, "tokens_since_compaction_k": 155, "mean_score": 28.69, "p90": 91.0, "total_steps": 13, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 32, "tokens_since_compaction_k": 160, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 33, "tokens_since_compaction_k": 165, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 34, "tokens_since_compaction_k": 170, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 35, "tokens_since_compaction_k": 175, "mean_score": 28.69, "p90": 91.0, "total_steps": 13, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 36, "tokens_since_compaction_k": 180, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 37, "tokens_since_compaction_k": 185, "mean_score": 52.23, "p90": 163.0, "total_steps": 13, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 38, "tokens_since_compaction_k": 190, "mean_score": 50.33, "p90": 160.2, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 39, "tokens_since_compaction_k": 195, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 40, "tokens_since_compaction_k": 200, "mean_score": 38.33, "p90": 130.6, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 41, "tokens_since_compaction_k": 205, "mean_score": 99.17, "p90": 459.1, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 42, "tokens_since_compaction_k": 210, "mean_score": 99.17, "p90": 459.1, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 43, "tokens_since_compaction_k": 215, "mean_score": 154.54, "p90": 500.0, "total_steps": 13, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 44, "tokens_since_compaction_k": 220, "mean_score": 99.17, "p90": 459.1, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 45, "tokens_since_compaction_k": 225, "mean_score": 99.17, "p90": 459.1, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 46, "tokens_since_compaction_k": 230, "mean_score": 45.33, "p90": 168.4, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 47, "tokens_since_compaction_k": 235, "mean_score": 113.5, "p90": 467.7, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 48, "tokens_since_compaction_k": 240, "mean_score": 220.0, "p90": 500.0, "total_steps": 13, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 49, "tokens_since_compaction_k": 245, "mean_score": 250.5, "p90": 500.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 50, "tokens_since_compaction_k": 250, "mean_score": 229.67, "p90": 500.0, "total_steps": 12, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 51, "tokens_since_compaction_k": 255, "mean_score": 144.2, "p90": 500.0, "total_steps": 10, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 52, "tokens_since_compaction_k": 260, "mean_score": 168.4, "p90": 500.0, "total_steps": 10, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 53, "tokens_since_compaction_k": 265, "mean_score": 435.4, "p90": 507.0, "total_steps": 10, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 54, "tokens_since_compaction_k": 270, "mean_score": 511.2, "p90": 556.0, "total_steps": 10, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 55, "tokens_since_compaction_k": 275, "mean_score": 566.89, "p90": 786.0, "total_steps": 9, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 56, "tokens_since_compaction_k": 280, "mean_score": 582.75, "p90": 786.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 57, "tokens_since_compaction_k": 285, "mean_score": 601.75, "p90": 731.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 58, "tokens_since_compaction_k": 290, "mean_score": 613.0, "p90": 731.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 59, "tokens_since_compaction_k": 295, "mean_score": 616.5, "p90": 731.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 60, "tokens_since_compaction_k": 300, "mean_score": 633.0, "p90": 776.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 61, "tokens_since_compaction_k": 305, "mean_score": 582.5, "p90": 766.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 62, "tokens_since_compaction_k": 310, "mean_score": 554.75, "p90": 766.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 63, "tokens_since_compaction_k": 315, "mean_score": 549.5, "p90": 766.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 64, "tokens_since_compaction_k": 320, "mean_score": 599.25, "p90": 766.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 65, "tokens_since_compaction_k": 325, "mean_score": 599.25, "p90": 766.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 66, "tokens_since_compaction_k": 330, "mean_score": 517.5, "p90": 762.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 67, "tokens_since_compaction_k": 335, "mean_score": 517.5, "p90": 762.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 68, "tokens_since_compaction_k": 340, "mean_score": 540.44, "p90": 786.0, "total_steps": 9, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 69, "tokens_since_compaction_k": 345, "mean_score": 409.0, "p90": 786.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 70, "tokens_since_compaction_k": 350, "mean_score": 481.78, "p90": 786.0, "total_steps": 9, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 71, "tokens_since_compaction_k": 355, "mean_score": 452.0, "p90": 766.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 72, "tokens_since_compaction_k": 360, "mean_score": 463.0, "p90": 766.0, "total_steps": 8, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 73, "tokens_since_compaction_k": 365, "mean_score": 442.67, "p90": 786.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 74, "tokens_since_compaction_k": 370, "mean_score": 395.67, "p90": 786.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 75, "tokens_since_compaction_k": 375, "mean_score": 486.67, "p90": 783.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 76, "tokens_since_compaction_k": 380, "mean_score": 364.0, "p90": 783.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 77, "tokens_since_compaction_k": 385, "mean_score": 472.67, "p90": 786.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 78, "tokens_since_compaction_k": 390, "mean_score": 472.67, "p90": 786.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 79, "tokens_since_compaction_k": 395, "mean_score": 592.0, "p90": 776.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 80, "tokens_since_compaction_k": 400, "mean_score": 439.33, "p90": 776.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 81, "tokens_since_compaction_k": 405, "mean_score": 442.67, "p90": 786.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 82, "tokens_since_compaction_k": 410, "mean_score": 473.67, "p90": 786.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 83, "tokens_since_compaction_k": 415, "mean_score": 480.67, "p90": 786.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 84, "tokens_since_compaction_k": 420, "mean_score": 347.67, "p90": 776.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 85, "tokens_since_compaction_k": 425, "mean_score": 469.33, "p90": 776.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 86, "tokens_since_compaction_k": 430, "mean_score": 469.33, "p90": 776.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 87, "tokens_since_compaction_k": 435, "mean_score": 466.0, "p90": 766.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 88, "tokens_since_compaction_k": 440, "mean_score": 520.0, "p90": 766.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 89, "tokens_since_compaction_k": 445, "mean_score": 466.0, "p90": 766.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 90, "tokens_since_compaction_k": 450, "mean_score": 495.0, "p90": 786.0, "total_steps": 5, "n_sessions": 3}, {"task_type": "feature", "bucket_id": 91, "tokens_since_compaction_k": 455, "mean_score": 786.0, "p90": 786.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "feature", "bucket_id": 92, "tokens_since_compaction_k": 460, "mean_score": 807.0, "p90": 807.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "feature", "bucket_id": 93, "tokens_since_compaction_k": 465, "mean_score": 786.0, "p90": 786.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "feature", "bucket_id": 94, "tokens_since_compaction_k": 470, "mean_score": 731.0, "p90": 731.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "feature", "bucket_id": 95, "tokens_since_compaction_k": 475, "mean_score": 731.0, "p90": 731.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "feature", "bucket_id": 96, "tokens_since_compaction_k": 480, "mean_score": 752.0, "p90": 752.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "feature", "bucket_id": 97, "tokens_since_compaction_k": 485, "mean_score": 786.0, "p90": 786.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "feature", "bucket_id": 98, "tokens_since_compaction_k": 490, "mean_score": 786.0, "p90": 786.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "feature", "bucket_id": 99, "tokens_since_compaction_k": 495, "mean_score": 786.0, "p90": 786.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "feature", "bucket_id": 100, "tokens_since_compaction_k": 500, "mean_score": 752.0, "p90": 752.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "feature", "bucket_id": 101, "tokens_since_compaction_k": 505, "mean_score": 742.0, "p90": 742.0, "total_steps": 1, "n_sessions": 1}, {"task_type": "refactor", "bucket_id": 2, "tokens_since_compaction_k": 10, "mean_score": 1.0, "p90": 1.0, "total_steps": 3, "n_sessions": 3}, {"task_type": "refactor", "bucket_id": 3, "tokens_since_compaction_k": 15, "mean_score": 137.43, "p90": 527.4, "total_steps": 14, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 4, "tokens_since_compaction_k": 20, "mean_score": 98.31, "p90": 518.2, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 5, "tokens_since_compaction_k": 25, "mean_score": 138.32, "p90": 531.92, "total_steps": 19, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 6, "tokens_since_compaction_k": 30, "mean_score": 130.5, "p90": 526.6, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 7, "tokens_since_compaction_k": 35, "mean_score": 125.75, "p90": 500.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 8, "tokens_since_compaction_k": 40, "mean_score": 33.75, "p90": 132.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 9, "tokens_since_compaction_k": 45, "mean_score": 33.75, "p90": 132.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 10, "tokens_since_compaction_k": 50, "mean_score": 31.12, "p90": 125.7, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 11, "tokens_since_compaction_k": 55, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 12, "tokens_since_compaction_k": 60, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 13, "tokens_since_compaction_k": 65, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 14, "tokens_since_compaction_k": 70, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 15, "tokens_since_compaction_k": 75, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 16, "tokens_since_compaction_k": 80, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 17, "tokens_since_compaction_k": 85, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 18, "tokens_since_compaction_k": 90, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 19, "tokens_since_compaction_k": 95, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 20, "tokens_since_compaction_k": 100, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 21, "tokens_since_compaction_k": 105, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 22, "tokens_since_compaction_k": 110, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 23, "tokens_since_compaction_k": 115, "mean_score": 22.18, "p90": 91.0, "total_steps": 17, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 24, "tokens_since_compaction_k": 120, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 25, "tokens_since_compaction_k": 125, "mean_score": 22.18, "p90": 91.0, "total_steps": 17, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 26, "tokens_since_compaction_k": 130, "mean_score": 22.18, "p90": 91.0, "total_steps": 17, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 27, "tokens_since_compaction_k": 135, "mean_score": 22.18, "p90": 91.0, "total_steps": 17, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 28, "tokens_since_compaction_k": 140, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 29, "tokens_since_compaction_k": 145, "mean_score": 21.0, "p90": 91.0, "total_steps": 18, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 30, "tokens_since_compaction_k": 150, "mean_score": 27.47, "p90": 91.0, "total_steps": 17, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 31, "tokens_since_compaction_k": 155, "mean_score": 27.47, "p90": 91.0, "total_steps": 17, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 32, "tokens_since_compaction_k": 160, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 33, "tokens_since_compaction_k": 165, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 34, "tokens_since_compaction_k": 170, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 35, "tokens_since_compaction_k": 175, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 36, "tokens_since_compaction_k": 180, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 37, "tokens_since_compaction_k": 185, "mean_score": 23.5, "p90": 91.0, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 38, "tokens_since_compaction_k": 190, "mean_score": 34.25, "p90": 151.2, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 39, "tokens_since_compaction_k": 195, "mean_score": 35.88, "p90": 160.3, "total_steps": 16, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 40, "tokens_since_compaction_k": 200, "mean_score": 38.2, "p90": 165.25, "total_steps": 15, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 41, "tokens_since_compaction_k": 205, "mean_score": 26.71, "p90": 91.0, "total_steps": 14, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 42, "tokens_since_compaction_k": 210, "mean_score": 28.69, "p90": 91.0, "total_steps": 13, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 43, "tokens_since_compaction_k": 215, "mean_score": 52.17, "p90": 205.3, "total_steps": 12, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 44, "tokens_since_compaction_k": 220, "mean_score": 31.0, "p90": 91.0, "total_steps": 12, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 45, "tokens_since_compaction_k": 225, "mean_score": 28.69, "p90": 91.0, "total_steps": 13, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 46, "tokens_since_compaction_k": 230, "mean_score": 99.17, "p90": 459.1, "total_steps": 12, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 47, "tokens_since_compaction_k": 235, "mean_score": 91.62, "p90": 438.65, "total_steps": 13, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 48, "tokens_since_compaction_k": 240, "mean_score": 99.17, "p90": 459.1, "total_steps": 12, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 49, "tokens_since_compaction_k": 245, "mean_score": 55.23, "p90": 176.0, "total_steps": 13, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 50, "tokens_since_compaction_k": 250, "mean_score": 45.17, "p90": 167.5, "total_steps": 12, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 51, "tokens_since_compaction_k": 255, "mean_score": 63.14, "p90": 203.56, "total_steps": 14, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 52, "tokens_since_compaction_k": 260, "mean_score": 131.77, "p90": 458.75, "total_steps": 13, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 53, "tokens_since_compaction_k": 265, "mean_score": 153.67, "p90": 515.1, "total_steps": 12, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 54, "tokens_since_compaction_k": 270, "mean_score": 279.83, "p90": 540.5, "total_steps": 12, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 55, "tokens_since_compaction_k": 275, "mean_score": 333.67, "p90": 500.0, "total_steps": 12, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 56, "tokens_since_compaction_k": 280, "mean_score": 445.09, "p90": 687.15, "total_steps": 11, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 57, "tokens_since_compaction_k": 285, "mean_score": 524.15, "p90": 772.65, "total_steps": 13, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 58, "tokens_since_compaction_k": 290, "mean_score": 526.17, "p90": 777.1, "total_steps": 12, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 59, "tokens_since_compaction_k": 295, "mean_score": 571.33, "p90": 744.4, "total_steps": 12, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 60, "tokens_since_compaction_k": 300, "mean_score": 541.67, "p90": 744.4, "total_steps": 12, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 61, "tokens_since_compaction_k": 305, "mean_score": 508.33, "p90": 741.0, "total_steps": 12, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 62, "tokens_since_compaction_k": 310, "mean_score": 485.83, "p90": 722.1, "total_steps": 12, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 63, "tokens_since_compaction_k": 315, "mean_score": 509.5, "p90": 722.1, "total_steps": 12, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 64, "tokens_since_compaction_k": 320, "mean_score": 527.83, "p90": 777.1, "total_steps": 12, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 65, "tokens_since_compaction_k": 325, "mean_score": 517.09, "p90": 781.55, "total_steps": 11, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 66, "tokens_since_compaction_k": 330, "mean_score": 489.8, "p90": 786.0, "total_steps": 10, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 67, "tokens_since_compaction_k": 335, "mean_score": 539.0, "p90": 786.0, "total_steps": 10, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 68, "tokens_since_compaction_k": 340, "mean_score": 512.89, "p90": 786.0, "total_steps": 9, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 69, "tokens_since_compaction_k": 345, "mean_score": 539.6, "p90": 817.0, "total_steps": 10, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 70, "tokens_since_compaction_k": 350, "mean_score": 644.55, "p90": 783.95, "total_steps": 11, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 71, "tokens_since_compaction_k": 355, "mean_score": 628.55, "p90": 783.95, "total_steps": 11, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 72, "tokens_since_compaction_k": 360, "mean_score": 520.33, "p90": 786.0, "total_steps": 9, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 73, "tokens_since_compaction_k": 365, "mean_score": 449.8, "p90": 786.0, "total_steps": 10, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 74, "tokens_since_compaction_k": 370, "mean_score": 418.2, "p90": 776.0, "total_steps": 10, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 75, "tokens_since_compaction_k": 375, "mean_score": 455.4, "p90": 776.0, "total_steps": 10, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 76, "tokens_since_compaction_k": 380, "mean_score": 355.14, "p90": 783.33, "total_steps": 7, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 77, "tokens_since_compaction_k": 385, "mean_score": 509.75, "p90": 786.0, "total_steps": 8, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 78, "tokens_since_compaction_k": 390, "mean_score": 494.5, "p90": 766.0, "total_steps": 8, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 79, "tokens_since_compaction_k": 395, "mean_score": 445.22, "p90": 776.0, "total_steps": 9, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 80, "tokens_since_compaction_k": 400, "mean_score": 338.5, "p90": 766.0, "total_steps": 8, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 81, "tokens_since_compaction_k": 405, "mean_score": 539.25, "p90": 776.0, "total_steps": 8, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 82, "tokens_since_compaction_k": 410, "mean_score": 552.75, "p90": 711.0, "total_steps": 8, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 83, "tokens_since_compaction_k": 415, "mean_score": 571.5, "p90": 786.0, "total_steps": 8, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 84, "tokens_since_compaction_k": 420, "mean_score": 576.25, "p90": 786.0, "total_steps": 8, "n_sessions": 4}, {"task_type": "refactor", "bucket_id": 85, "tokens_since_compaction_k": 425, "mean_score": 690.67, "p90": 786.0, "total_steps": 6, "n_sessions": 3}, {"task_type": "refactor", "bucket_id": 86, "tokens_since_compaction_k": 430, "mean_score": 703.2, "p90": 786.0, "total_steps": 5, "n_sessions": 3}, {"task_type": "refactor", "bucket_id": 87, "tokens_since_compaction_k": 435, "mean_score": 786.0, "p90": 786.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "refactor", "bucket_id": 88, "tokens_since_compaction_k": 440, "mean_score": 743.5, "p90": 776.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "refactor", "bucket_id": 89, "tokens_since_compaction_k": 445, "mean_score": 738.5, "p90": 766.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "refactor", "bucket_id": 90, "tokens_since_compaction_k": 450, "mean_score": 748.5, "p90": 766.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "refactor", "bucket_id": 91, "tokens_since_compaction_k": 455, "mean_score": 766.0, "p90": 766.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "refactor", "bucket_id": 92, "tokens_since_compaction_k": 460, "mean_score": 774.0, "p90": 786.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "refactor", "bucket_id": 93, "tokens_since_compaction_k": 465, "mean_score": 760.5, "p90": 766.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "refactor", "bucket_id": 94, "tokens_since_compaction_k": 470, "mean_score": 780.0, "p90": 786.0, "total_steps": 3, "n_sessions": 2}, {"task_type": "refactor", "bucket_id": 95, "tokens_since_compaction_k": 475, "mean_score": 774.0, "p90": 786.0, "total_steps": 5, "n_sessions": 2}, {"task_type": "refactor", "bucket_id": 96, "tokens_since_compaction_k": 480, "mean_score": 750.67, "p90": 768.0, "total_steps": 3, "n_sessions": 2}, {"task_type": "refactor", "bucket_id": 97, "tokens_since_compaction_k": 485, "mean_score": 768.4, "p90": 786.0, "total_steps": 5, "n_sessions": 2}, {"task_type": "refactor", "bucket_id": 98, "tokens_since_compaction_k": 490, "mean_score": 776.0, "p90": 786.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "refactor", "bucket_id": 99, "tokens_since_compaction_k": 495, "mean_score": 776.0, "p90": 786.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "refactor", "bucket_id": 100, "tokens_since_compaction_k": 500, "mean_score": 786.0, "p90": 786.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "refactor", "bucket_id": 101, "tokens_since_compaction_k": 505, "mean_score": 748.0, "p90": 748.0, "total_steps": 1, "n_sessions": 1}, {"task_type": "test", "bucket_id": 2, "tokens_since_compaction_k": 10, "mean_score": 1.0, "p90": 1.0, "total_steps": 1, "n_sessions": 1}, {"task_type": "test", "bucket_id": 3, "tokens_since_compaction_k": 15, "mean_score": 129.86, "p90": 452.0, "total_steps": 7, "n_sessions": 2}, {"task_type": "test", "bucket_id": 4, "tokens_since_compaction_k": 20, "mean_score": 76.0, "p90": 376.0, "total_steps": 10, "n_sessions": 2}, {"task_type": "test", "bucket_id": 5, "tokens_since_compaction_k": 25, "mean_score": 138.0, "p90": 549.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 6, "tokens_since_compaction_k": 30, "mean_score": 125.75, "p90": 500.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 7, "tokens_since_compaction_k": 35, "mean_score": 125.75, "p90": 500.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 8, "tokens_since_compaction_k": 40, "mean_score": 125.75, "p90": 500.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 9, "tokens_since_compaction_k": 45, "mean_score": 33.75, "p90": 132.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 10, "tokens_since_compaction_k": 50, "mean_score": 33.75, "p90": 132.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 11, "tokens_since_compaction_k": 55, "mean_score": 28.5, "p90": 111.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 12, "tokens_since_compaction_k": 60, "mean_score": 28.5, "p90": 111.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 13, "tokens_since_compaction_k": 65, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 14, "tokens_since_compaction_k": 70, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 15, "tokens_since_compaction_k": 75, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 16, "tokens_since_compaction_k": 80, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 17, "tokens_since_compaction_k": 85, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 18, "tokens_since_compaction_k": 90, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 19, "tokens_since_compaction_k": 95, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 20, "tokens_since_compaction_k": 100, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 21, "tokens_since_compaction_k": 105, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 22, "tokens_since_compaction_k": 110, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 23, "tokens_since_compaction_k": 115, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 24, "tokens_since_compaction_k": 120, "mean_score": 31.0, "p90": 91.0, "total_steps": 9, "n_sessions": 2}, {"task_type": "test", "bucket_id": 25, "tokens_since_compaction_k": 125, "mean_score": 21.0, "p90": 91.0, "total_steps": 9, "n_sessions": 2}, {"task_type": "test", "bucket_id": 26, "tokens_since_compaction_k": 130, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 27, "tokens_since_compaction_k": 135, "mean_score": 21.0, "p90": 91.0, "total_steps": 9, "n_sessions": 2}, {"task_type": "test", "bucket_id": 28, "tokens_since_compaction_k": 140, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 29, "tokens_since_compaction_k": 145, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 30, "tokens_since_compaction_k": 150, "mean_score": 21.0, "p90": 91.0, "total_steps": 9, "n_sessions": 2}, {"task_type": "test", "bucket_id": 31, "tokens_since_compaction_k": 155, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 32, "tokens_since_compaction_k": 160, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 33, "tokens_since_compaction_k": 165, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 34, "tokens_since_compaction_k": 170, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 35, "tokens_since_compaction_k": 175, "mean_score": 23.5, "p90": 91.0, "total_steps": 8, "n_sessions": 2}, {"task_type": "test", "bucket_id": 36, "tokens_since_compaction_k": 180, "mean_score": 26.71, "p90": 91.0, "total_steps": 7, "n_sessions": 2}, {"task_type": "test", "bucket_id": 37, "tokens_since_compaction_k": 185, "mean_score": 31.0, "p90": 91.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 38, "tokens_since_compaction_k": 190, "mean_score": 31.0, "p90": 91.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 39, "tokens_since_compaction_k": 195, "mean_score": 45.67, "p90": 135.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 40, "tokens_since_compaction_k": 200, "mean_score": 167.33, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 41, "tokens_since_compaction_k": 205, "mean_score": 167.33, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 42, "tokens_since_compaction_k": 210, "mean_score": 167.33, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 43, "tokens_since_compaction_k": 215, "mean_score": 167.33, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 44, "tokens_since_compaction_k": 220, "mean_score": 167.33, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 45, "tokens_since_compaction_k": 225, "mean_score": 59.67, "p90": 177.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 46, "tokens_since_compaction_k": 230, "mean_score": 82.67, "p90": 246.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 47, "tokens_since_compaction_k": 235, "mean_score": 59.67, "p90": 177.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 48, "tokens_since_compaction_k": 240, "mean_score": 44.67, "p90": 132.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 49, "tokens_since_compaction_k": 245, "mean_score": 44.67, "p90": 132.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 50, "tokens_since_compaction_k": 250, "mean_score": 143.57, "p90": 500.0, "total_steps": 7, "n_sessions": 2}, {"task_type": "test", "bucket_id": 51, "tokens_since_compaction_k": 255, "mean_score": 143.57, "p90": 500.0, "total_steps": 7, "n_sessions": 2}, {"task_type": "test", "bucket_id": 52, "tokens_since_compaction_k": 260, "mean_score": 167.33, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 53, "tokens_since_compaction_k": 265, "mean_score": 333.67, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 54, "tokens_since_compaction_k": 270, "mean_score": 502.33, "p90": 507.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 55, "tokens_since_compaction_k": 275, "mean_score": 503.0, "p90": 507.0, "total_steps": 7, "n_sessions": 2}, {"task_type": "test", "bucket_id": 56, "tokens_since_compaction_k": 280, "mean_score": 419.67, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 57, "tokens_since_compaction_k": 285, "mean_score": 419.67, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 58, "tokens_since_compaction_k": 290, "mean_score": 419.67, "p90": 500.0, "total_steps": 6, "n_sessions": 2}, {"task_type": "test", "bucket_id": 59, "tokens_since_compaction_k": 295, "mean_score": 228.6, "p90": 394.0, "total_steps": 5, "n_sessions": 2}, {"task_type": "test", "bucket_id": 60, "tokens_since_compaction_k": 300, "mean_score": 500.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 61, "tokens_since_compaction_k": 305, "mean_score": 271.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 62, "tokens_since_compaction_k": 310, "mean_score": 293.5, "p90": 545.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 63, "tokens_since_compaction_k": 315, "mean_score": 271.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 64, "tokens_since_compaction_k": 320, "mean_score": 381.5, "p90": 721.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 65, "tokens_since_compaction_k": 325, "mean_score": 349.0, "p90": 656.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 66, "tokens_since_compaction_k": 330, "mean_score": 349.0, "p90": 656.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 67, "tokens_since_compaction_k": 335, "mean_score": 271.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 68, "tokens_since_compaction_k": 340, "mean_score": 87.0, "p90": 132.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 69, "tokens_since_compaction_k": 345, "mean_score": 316.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 70, "tokens_since_compaction_k": 350, "mean_score": 316.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 71, "tokens_since_compaction_k": 355, "mean_score": 538.0, "p90": 576.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 72, "tokens_since_compaction_k": 360, "mean_score": 393.5, "p90": 745.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 73, "tokens_since_compaction_k": 365, "mean_score": 393.5, "p90": 745.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 74, "tokens_since_compaction_k": 370, "mean_score": 500.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 75, "tokens_since_compaction_k": 375, "mean_score": 500.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 76, "tokens_since_compaction_k": 380, "mean_score": 500.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 77, "tokens_since_compaction_k": 385, "mean_score": 500.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 78, "tokens_since_compaction_k": 390, "mean_score": 271.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 79, "tokens_since_compaction_k": 395, "mean_score": 400.5, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 80, "tokens_since_compaction_k": 400, "mean_score": 400.5, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 81, "tokens_since_compaction_k": 405, "mean_score": 500.0, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 82, "tokens_since_compaction_k": 410, "mean_score": 385.5, "p90": 500.0, "total_steps": 4, "n_sessions": 2}, {"task_type": "test", "bucket_id": 83, "tokens_since_compaction_k": 415, "mean_score": 132.0, "p90": 132.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "test", "bucket_id": 84, "tokens_since_compaction_k": 420, "mean_score": 132.0, "p90": 132.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "test", "bucket_id": 85, "tokens_since_compaction_k": 425, "mean_score": 132.0, "p90": 132.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "test", "bucket_id": 86, "tokens_since_compaction_k": 430, "mean_score": 500.0, "p90": 500.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "test", "bucket_id": 87, "tokens_since_compaction_k": 435, "mean_score": 500.0, "p90": 500.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "test", "bucket_id": 88, "tokens_since_compaction_k": 440, "mean_score": 500.0, "p90": 500.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "test", "bucket_id": 89, "tokens_since_compaction_k": 445, "mean_score": 500.0, "p90": 500.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "test", "bucket_id": 90, "tokens_since_compaction_k": 450, "mean_score": 714.0, "p90": 714.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "test", "bucket_id": 91, "tokens_since_compaction_k": 455, "mean_score": 500.0, "p90": 500.0, "total_steps": 2, "n_sessions": 1}, {"task_type": "test", "bucket_id": 92, "tokens_since_compaction_k": 460, "mean_score": 607.0, "p90": 607.0, "total_steps": 2, "n_sessions": 1}];
+    const onsetInfo = {"max_fill_tokens_since_compaction": 465000, "max_cumulative_context_tokens": 867877, "min_fill_tokens_guard": 100000, "effective_min_fill_tokens": 100000, "guard_triggered_short_dataset": false, "guard_warning": null, "median_slope": 16.29, "slope_threshold_value": 32.57, "slope_onset_bucket": 52, "slope_onset_tokens": 260000, "p90_threshold_value": 400.0, "p90_onset_bucket": 43, "p90_onset_tokens": 215000, "recovery_knee_tokens": 275000, "state_save_failure_tokens": 275000, "recommended_bucket": 43, "recommended_compaction_tokens": 215000, "opencode_v2_buffer_tokens": 685000, "model_context_window": 900000, "binding_method": "p90_threshold"};
+
+    // Chart 1: Main Rot Curve vs tokens_since_compaction
+    (function renderMainCurve() {
+      const svg = document.getElementById("rot-curve-svg");
+      if (!svg || !curveData.length) return;
+      const W = 960, H = 350;
+      const pad = { top: 28, right: 35, bottom: 44, left: 58 };
+      const plotW = W - pad.left - pad.right;
+      const plotH = H - pad.top - pad.bottom;
+
+      const maxK = Math.max(...curveData.map(d => d.tokens_since_compaction_k), 50);
+      const minK = Math.min(...curveData.map(d => d.tokens_since_compaction_k), 0);
+      const xSpan = Math.max(maxK - minK, 10);
+
+      const xPos = (k) => pad.left + ((k - minK) / xSpan) * plotW;
+      const yPos = (s) => pad.top + plotH - (Math.min(Math.max(s, 0), 1000) / 1000) * plotH;
+
+      let html = "";
+      [0, 200, 400, 600, 800, 1000].forEach(val => {
+        const y = yPos(val);
+        const is400 = (val === onsetInfo.p90_threshold_value);
+        html += `<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" stroke="${is400 ? '#ef4444' : '#1e293b'}" stroke-dasharray="${is400 ? '5,4' : 'none'}" />`;
+        html += `<text x="${pad.left - 8}" y="${y + 4}" text-anchor="end" fill="#94a3b8" font-size="11" font-family="monospace">${val}</text>`;
+      });
+
+      const stepStride = Math.max(1, Math.floor(curveData.length / 12));
+      curveData.forEach((d, idx) => {
+        if (idx % stepStride === 0 || idx === curveData.length - 1) {
+          const x = xPos(d.tokens_since_compaction_k);
+          html += `<line x1="${x}" y1="${pad.top}" x2="${x}" y2="${pad.top + plotH}" stroke="#1e293b" />`;
+          html += `<text x="${x}" y="${H - 14}" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="monospace">${d.tokens_since_compaction_k}k</text>`;
+        }
+      });
+
+      if (curveData.length > 1) {
+        const topPts = curveData.map(d => `${xPos(d.tokens_since_compaction_k)},${yPos(d.p90)}`).join(" ");
+        const botPts = [...curveData].reverse().map(d => `${xPos(d.tokens_since_compaction_k)},${yPos(d.p50)}`).join(" ");
+        html += `<polygon points="${topPts} ${botPts}" fill="rgba(239, 68, 68, 0.15)" />`;
+      }
+
+      if (onsetInfo.recommended_compaction_tokens) {
+        const rk = onsetInfo.recommended_compaction_tokens / 1000;
+        const rx = xPos(rk);
+        html += `<line x1="${rx}" y1="${pad.top}" x2="${rx}" y2="${pad.top + plotH}" stroke="#22c55e" stroke-width="2.5" stroke-dasharray="6,4" />`;
+        html += `<text x="${rx + 6}" y="${pad.top + 16}" fill="#22c55e" font-size="12" font-weight="bold">Recommended T = ${rk}k</text>`;
+      }
+
+      if (onsetInfo.recovery_knee_tokens) {
+        const ck = onsetInfo.recovery_knee_tokens / 1000;
+        const cx = xPos(ck);
+        html += `<line x1="${cx}" y1="${pad.top}" x2="${cx}" y2="${pad.top + plotH}" stroke="#a855f7" stroke-width="2" stroke-dasharray="3,3" />`;
+        html += `<text x="${cx + 6}" y="${pad.top + 34}" fill="#d8b4fe" font-size="11">Recovery Knee (s15) = ${ck}k</text>`;
+      }
+
+      const p90Pts = curveData.map(d => `${xPos(d.tokens_since_compaction_k)},${yPos(d.p90)}`).join(" ");
+      const p50Pts = curveData.map(d => `${xPos(d.tokens_since_compaction_k)},${yPos(d.p50)}`).join(" ");
+      const meanPts = curveData.map(d => `${xPos(d.tokens_since_compaction_k)},${yPos(d.mean_score)}`).join(" ");
+
+      html += `<polyline fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="4,3" points="${p90Pts}" />`;
+      html += `<polyline fill="none" stroke="#f59e0b" stroke-width="2" points="${p50Pts}" />`;
+      html += `<polyline fill="none" stroke="#38bdf8" stroke-width="3" points="${meanPts}" />`;
+      svg.innerHTML = html;
+    })();
+
+    // Chart 2: Signal 15 Compaction Recovery Ratio vs tokens_at_compaction
+    (function renderRecoveryChart() {
+      const svg = document.getElementById("recovery-svg");
+      if (!svg || !recoveryData.length) return;
+      const W = 460, H = 270;
+      const pad = { top: 24, right: 25, bottom: 40, left: 48 };
+      const plotW = W - pad.left - pad.right;
+      const plotH = H - pad.top - pad.bottom;
+
+      const maxK = Math.max(...recoveryData.map(d => d.tokens_at_compaction_k), 100);
+      const minK = Math.min(...recoveryData.map(d => d.tokens_at_compaction_k), 0);
+      const spanK = Math.max(maxK - minK, 25);
+
+      const xPos = (k) => pad.left + ((k - minK) / spanK) * plotW;
+      const yPos = (r) => pad.top + plotH - (Math.min(Math.max(r, 0), 1.2) / 1.2) * plotH;
+
+      let html = "";
+      [0, 0.3, 0.65, 1.0].forEach(val => {
+        const y = yPos(val);
+        const isThresh = (val === 0.65);
+        html += `<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" stroke="${isThresh ? '#ef4444' : '#1e293b'}" stroke-dasharray="${isThresh ? '4,3' : 'none'}" />`;
+        html += `<text x="${pad.left - 6}" y="${y + 4}" text-anchor="end" fill="#94a3b8" font-size="10" font-family="monospace">${val.toFixed(2)}</text>`;
+      });
+
+      const pts = recoveryData.map(d => `${xPos(d.tokens_at_compaction_k)},${yPos(d.mean_recovery_ratio)}`).join(" ");
+      html += `<polyline fill="none" stroke="#a855f7" stroke-width="2.5" points="${pts}" />`;
+      recoveryData.forEach(d => {
+        const cx = xPos(d.tokens_at_compaction_k);
+        const cy = yPos(d.mean_recovery_ratio);
+        html += `<circle cx="${cx}" cy="${cy}" r="4.5" fill="${d.mean_recovery_ratio > 0.65 ? '#ef4444' : '#22c55e'}" />`;
+        html += `<text x="${cx}" y="${H - 12}" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="monospace">${d.tokens_at_compaction_k}k</text>`;
+      });
+      svg.innerHTML = html;
+    })();
+
+    // Chart 3: Post-Compaction Stratified by Signal 14c
+    (function renderStrat14c() {
+      const svg = document.getElementById("strat-14c-svg");
+      if (!svg || !strat14cData.length) return;
+      const W = 460, H = 270;
+      const pad = { top: 24, right: 25, bottom: 40, left: 48 };
+      const plotW = W - pad.left - pad.right;
+      const plotH = H - pad.top - pad.bottom;
+
+      const maxK = Math.max(...strat14cData.map(d => d.tokens_since_compaction_k), 50);
+      const xPos = (k) => pad.left + (k / maxK) * plotW;
+      const yPos = (s) => pad.top + plotH - (Math.min(Math.max(s, 0), 1000) / 1000) * plotH;
+
+      let html = "";
+      [0, 250, 500, 750, 1000].forEach(val => {
+        const y = yPos(val);
+        html += `<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" stroke="#1e293b" />`;
+        html += `<text x="${pad.left - 6}" y="${y + 4}" text-anchor="end" fill="#94a3b8" font-size="10" font-family="monospace">${val}</text>`;
+      });
+
+      const colors = {
+        "pre_compaction": "#38bdf8",
+        "post_compaction_saved_ok": "#22c55e",
+        "post_compaction_lost_state": "#ef4444"
+      };
+      ["pre_compaction", "post_compaction_saved_ok", "post_compaction_lost_state"].forEach(st => {
+        const rows = strat14cData.filter(d => d.stratum === st);
+        if (rows.length > 1) {
+          const pts = rows.map(d => `${xPos(d.tokens_since_compaction_k)},${yPos(d.mean_score)}`).join(" ");
+          html += `<polyline fill="none" stroke="${colors[st]}" stroke-width="2.5" points="${pts}" />`;
+        }
+      });
+      html += `<text x="${pad.left + 8}" y="${pad.top + 14}" fill="#22c55e" font-size="10">● Post-Compaction (Saved State OK)</text>`;
+      html += `<text x="${pad.left + 8}" y="${pad.top + 28}" fill="#ef4444" font-size="10">● Post-Compaction (Lost State 14c)</text>`;
+      html += `<text x="${pad.left + 8}" y="${pad.top + 42}" fill="#38bdf8" font-size="10">● Pre-Compaction Baseline</text>`;
+      svg.innerHTML = html;
+    })();
+
+    // Chart 6: Task-Type Stratified Curves
+    (function renderTaskType() {
+      const svg = document.getElementById("task-type-svg");
+      if (!svg || !taskTypeData.length) return;
+      const W = 460, H = 290;
+      const pad = { top: 24, right: 25, bottom: 40, left: 48 };
+      const plotW = W - pad.left - pad.right;
+      const plotH = H - pad.top - pad.bottom;
+
+      const maxK = Math.max(...taskTypeData.map(d => d.tokens_since_compaction_k), 50);
+      const xPos = (k) => pad.left + (k / maxK) * plotW;
+      const yPos = (s) => pad.top + plotH - (Math.min(Math.max(s, 0), 1000) / 1000) * plotH;
+
+      let html = "";
+      [0, 250, 500, 750, 1000].forEach(val => {
+        const y = yPos(val);
+        html += `<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" stroke="#1e293b" />`;
+        html += `<text x="${pad.left - 6}" y="${y + 4}" text-anchor="end" fill="#94a3b8" font-size="10" font-family="monospace">${val}</text>`;
+      });
+
+      const palette = {
+        "refactor": "#ef4444",
+        "bugfix": "#f59e0b",
+        "feature": "#38bdf8",
+        "test": "#22c55e",
+        "explore": "#a855f7"
+      };
+      let legY = pad.top + 14;
+      Object.keys(palette).forEach(tt => {
+        const rows = taskTypeData.filter(d => d.task_type === tt);
+        if (rows.length > 1) {
+          const pts = rows.map(d => `${xPos(d.tokens_since_compaction_k)},${yPos(d.mean_score)}`).join(" ");
+          html += `<polyline fill="none" stroke="${palette[tt]}" stroke-width="2" points="${pts}" />`;
+          html += `<text x="${pad.left + 10}" y="${legY}" fill="${palette[tt]}" font-size="10" font-family="monospace">● ${tt}</text>`;
+          legY += 14;
+        }
+      });
+      svg.innerHTML = html;
+    })();
+  </script>
+</body>
+</html>
