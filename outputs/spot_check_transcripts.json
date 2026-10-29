@@ -1,0 +1,129 @@
+[
+  {
+    "category": "HIGH_ROT (>700)",
+    "session_id": "sess_03_offrails_refactor",
+    "compaction_index": 1,
+    "bucket_id": 75,
+    "tokens_since_compaction_k": 375,
+    "score_raw": 821,
+    "score_smooth": 752,
+    "fired_signals": [
+      "s1",
+      "s2",
+      "s3",
+      "s4",
+      "s5",
+      "s6",
+      "s7",
+      "s8",
+      "s9",
+      "s11",
+      "s12",
+      "s13",
+      "s15"
+    ],
+    "sample_transcript_snippets": [
+      "I apologize for that mistake \u2014 let me fix the edit target at turn 278.",
+      "Executing refactor step 279 cleanly.",
+      "I apologize for that mistake \u2014 let me fix the edit target at turn 280."
+    ]
+  },
+  {
+    "category": "HIGH_ROT (>700)",
+    "session_id": "sess_11_offrails_feature",
+    "compaction_index": 1,
+    "bucket_id": 82,
+    "tokens_since_compaction_k": 410,
+    "score_raw": 817,
+    "score_smooth": 786,
+    "fired_signals": [
+      "s1",
+      "s2",
+      "s3",
+      "s4",
+      "s5",
+      "s6",
+      "s7",
+      "s8",
+      "s9",
+      "s11",
+      "s12",
+      "s13",
+      "s15"
+    ],
+    "sample_transcript_snippets": [
+      "I apologize for that mistake \u2014 let me fix the edit target at turn 307.",
+      "I apologize for that mistake \u2014 let me fix the edit target at turn 308."
+    ]
+  },
+  {
+    "category": "HIGH_ROT (>700)",
+    "session_id": "sess_11_offrails_feature",
+    "compaction_index": 1,
+    "bucket_id": 87,
+    "tokens_since_compaction_k": 435,
+    "score_raw": 817,
+    "score_smooth": 766,
+    "fired_signals": [
+      "s1",
+      "s2",
+      "s3",
+      "s4",
+      "s5",
+      "s6",
+      "s7",
+      "s8",
+      "s9",
+      "s10",
+      "s11",
+      "s13",
+      "s15"
+    ],
+    "sample_transcript_snippets": [
+      "I apologize for that mistake \u2014 let me fix the edit target at turn 317.",
+      "Executing feature step 318 cleanly."
+    ]
+  },
+  {
+    "category": "PRISTINE (<100)",
+    "session_id": "sess_08_feature",
+    "compaction_index": 0,
+    "bucket_id": 13,
+    "tokens_since_compaction_k": 65,
+    "score_raw": 1,
+    "score_smooth": 1,
+    "fired_signals": [],
+    "sample_transcript_snippets": [
+      "Executing feature step 26 cleanly. [BENCHMARK_SHINGLE_REFERENCE_BLOCK_0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ_HEALTHY_CHECK_OK]",
+      "Executing feature step 27 cleanly. [BENCHMARK_SHINGLE_REFERENCE_BLOCK_0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ_HEALTHY_CHECK_OK]"
+    ]
+  },
+  {
+    "category": "PRISTINE (<100)",
+    "session_id": "sess_08_feature",
+    "compaction_index": 0,
+    "bucket_id": 37,
+    "tokens_since_compaction_k": 185,
+    "score_raw": 1,
+    "score_smooth": 1,
+    "fired_signals": [],
+    "sample_transcript_snippets": [
+      "Executing feature step 75 cleanly. [BENCHMARK_SHINGLE_REFERENCE_BLOCK_0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ_HEALTHY_CHECK_OK]",
+      "Executing feature step 76 cleanly. [BENCHMARK_SHINGLE_REFERENCE_BLOCK_0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ_HEALTHY_CHECK_OK]"
+    ]
+  },
+  {
+    "category": "PRISTINE (<100)",
+    "session_id": "sess_08_feature",
+    "compaction_index": 0,
+    "bucket_id": 38,
+    "tokens_since_compaction_k": 190,
+    "score_raw": 1,
+    "score_smooth": 1,
+    "fired_signals": [],
+    "sample_transcript_snippets": [
+      "Executing feature step 77 cleanly. [BENCHMARK_SHINGLE_REFERENCE_BLOCK_0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ_HEALTHY_CHECK_OK]",
+      "Executing feature step 78 cleanly. [BENCHMARK_SHINGLE_REFERENCE_BLOCK_0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ_HEALTHY_CHECK_OK]"
+    ]
+  }
+]
