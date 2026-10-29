@@ -1,0 +1,84 @@
+# Context Rot Detector — Architecture-Specific Configuration (V2)
+# Configured for a 900k-token window, AGENTS.md-injected, memory-gated OpenCode setup.
+
+model_context_window: 1000000
+bucket_size_tokens: 5000
+warmup_steps: 5
+
+# Item 11: Flag buckets with n_steps < 10 as low_confidence and weight aggregate curve by n_steps
+min_steps_per_bucket: 10
+baseline_percentile: 95
+
+# Item 4: Require >= 2 hard failures (s1 + s2) in a bucket before applying the 500 score floor
+hard_failure_min_fires: 2
+score_floor_on_hard_failure: 500
+smoothing_window: 3
+
+# Item 9: Guard against reporting false early onset on truncated/short sample datasets
+min_fill_tokens: 100000
+min_fill_fraction_of_max: 0.20
+
+# Phase 4: Rot onset & compaction recovery knee detection parameters
+onset_slope_multiplier: 2.0
+onset_sustained_buckets: 2
+onset_p90_threshold: 400
+per_signal_onset_multiplier: 1.5
+recovery_ratio_threshold: 0.65
+
+# Memory-gating thresholds for Signals 14a & 14b
+memory_write_max_latency_steps: 3
+memory_write_burst_window_steps: 10
+memory_write_burst_threshold: 5
+
+# Item 14: Token pricing (USD per 1M tokens — DeepSeek V4.1-flash, OFF-PEAK rates).
+# Peak hours double all three; if a run straddles peak the cost column understates by up to 2x.
+# cross-check: api-docs.deepseek.com pricing page and the per-hour CSV from the usage export.
+price_cached_input_per_mtok: 0.003
+price_uncached_input_per_mtok: 0.150
+price_output_per_mtok: 0.600
+
+# Item 2: Architecture-Specific Signal Reliability Weights (15 Signals / 17 Evaluators, Total W = 14.8)
+# - s1..s4 up-weighted to 1.3 (direct tool/edit/retry/re-read failures)
+# - s9..s10 down-weighted to 0.3 (defended by AGENTS.md + memory gating)
+# - s13 (AGENTS.md retrieval failure) = 1.5 (#1 highest-value signal)
+# - s14a (memory write latency) = 0.5, s14b (memory write burst/starvation) = 0.5
+# - s14c (lost memory write across compaction) = 1.2 (highest diagnostic value for memory gating)
+# - s15 (compaction recovery degradation) = 1.3 (measures when compaction stops recovering state)
+weights:
+  s1: 1.3
+  s2: 1.3
+  s3: 1.3
+  s4: 1.3
+  s5: 0.8
+  s6: 0.8
+  s7: 0.6
+  s8: 0.6
+  s9: 0.3
+  s10: 0.3
+  s11: 0.6
+  s12: 0.3
+  s13: 1.5
+  s14a: 0.5
+  s14b: 0.5
+  s14c: 1.2
+  s15: 1.3
+
+# Sensible prior baseline firing rates for --bootstrap mode (<10 sessions)
+bootstrap_priors:
+  s1: 0.14
+  s2: 0.09
+  s3: 0.07
+  s4: 0.16
+  s5: 0.11
+  s6: 0.10
+  s7: 0.06
+  s8: 0.08
+  s9: 0.04
+  s10: 0.04
+  s11: 0.07
+  s12: 0.05
+  s13: 0.08
+  s14a: 0.07
+  s14b: 0.06
+  s14c: 0.09
+  s15: 0.08
