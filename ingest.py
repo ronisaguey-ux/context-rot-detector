@@ -365,6 +365,118 @@ def _extract_usage_cache_fields(m_data: Dict[str, Any], msg_parts: List[Dict[str
 # Read OpenCode SQLite & Reconstruct Steps
 # ---------------------------------------------------------------------------
 
+def export_v2_as_v1(sqlite_path: str | Path, out_dir: str | Path | None = None) -> Path:
+    """Translate an OpenCode V2 store into the V1 shape this pipeline reads.
+
+    V2 keeps every message as one JSON row in `session_message` (and sessions in `session_v2`);
+    the reader below expects `session` / `message` / `part`. Rather than fork the reader, the V2
+    rows are projected into a throwaway SQLite file with the same column names, carrying the real
+    usage numbers so the buckets are driven by measured context fill instead of a token estimate.
+
+    Returns the path of the translated database.
+    """
+    src = Path(sqlite_path).expanduser().resolve()
+    target_dir = Path(out_dir) if out_dir else src.parent
+    dst = target_dir / ".compat-v2.db"
+    try:
+        if dst.exists():
+            dst.unlink()
+    except OSError:
+        pass
+
+    out = sqlite3.connect(dst)
+    out.executescript(
+        """
+        CREATE TABLE session (id TEXT PRIMARY KEY, data TEXT);
+        CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT, role TEXT, data TEXT);
+        CREATE TABLE part (id TEXT PRIMARY KEY, message_id TEXT, type TEXT, data TEXT);
+        """
+    )
+    with open_sqlite(src, write=False) as conn:
+        conn.row_factory = sqlite3.Row
+        sessions = [dict(r) for r in conn.execute("SELECT * FROM session_v2")]
+        messages = [dict(r) for r in conn.execute("SELECT * FROM session_message ORDER BY session_id, seq")]
+
+    for sess in sessions:
+        out.execute(
+            "INSERT OR REPLACE INTO session (id, data) VALUES (?, ?)",
+            (str(sess.get("id")), json.dumps({"directory": sess.get("directory"), "title": sess.get("title")})),
+        )
+
+    for idx, msg in enumerate(messages):
+        payload = _safe_json_loads(msg.get("data"))
+        mtype = str(msg.get("type") or "")
+        mid = str(msg.get("id") or f"v2_{idx}")
+        sid = str(msg.get("session_id") or "")
+        when = payload.get("time") or {}
+        created = float(when.get("created") or 0) / 1000.0
+        completed = float(when.get("completed") or when.get("created") or 0) / 1000.0
+
+        if mtype == "compaction":
+            data = {
+                "role": "compaction",
+                "compaction": True,
+                "keep_tokens": 15000,
+                "reason": payload.get("reason"),
+                "created_at": created,
+            }
+            out.execute(
+                "INSERT OR REPLACE INTO message (id, session_id, role, data) VALUES (?, ?, ?, ?)",
+                (mid, sid, "compaction", json.dumps(data)),
+            )
+            continue
+
+        if mtype not in ("assistant", "user", "synthetic"):
+            continue
+
+        tokens = payload.get("tokens") or {}
+        cache = tokens.get("cache") or {}
+        data = {
+            "role": "user" if mtype == "user" else "assistant",
+            "created_at": created,
+            "time_updated": completed,
+            "input_tokens": int(tokens.get("input") or 0),
+            "output_tokens": int(tokens.get("output") or 0),
+            "usage": {"prompt_cache_hit_tokens": int(cache.get("read") or 0),
+                      "prompt_cache_miss_tokens": max(0, int(tokens.get("input") or 0) - int(cache.get("read") or 0))},
+            "cost": payload.get("cost"),
+        }
+        if payload.get("text"):
+            data["text"] = str(payload.get("text")).strip('"')
+        out.execute(
+            "INSERT OR REPLACE INTO message (id, session_id, role, data) VALUES (?, ?, ?, ?)",
+            (mid, sid, data["role"], json.dumps(data)),
+        )
+
+        for j, item in enumerate(payload.get("content") or []):
+            if not isinstance(item, dict):
+                continue
+            itype = str(item.get("type") or "text")
+            pid = f"{mid}_p{j}"
+            if itype in ("text", "reasoning"):
+                pdata = {"type": "text", "text": str(item.get("text") or "")}
+            elif itype == "tool":
+                state = item.get("state") or {}
+                pdata = {
+                    "type": "tool",
+                    "name": str(item.get("name") or "unknown"),
+                    "params": state.get("input") if isinstance(state.get("input"), dict) else {},
+                    "result": state.get("output"),
+                    "error": (state.get("status") == "error"),
+                    "call_id": item.get("id"),
+                }
+            else:
+                pdata = {"type": itype, "text": str(item)[:2000]}
+            out.execute(
+                "INSERT OR REPLACE INTO part (id, message_id, type, data) VALUES (?, ?, ?, ?)",
+                (pid, mid, pdata.get("type"), json.dumps(pdata)),
+            )
+
+    out.commit()
+    out.close()
+    return dst
+
+
 def read_opencode_sqlite(
     sqlite_path: str | Path,
     bucket_size_tokens: int = 5000,
@@ -379,6 +491,19 @@ def read_opencode_sqlite(
 
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = {r["name"] for r in cursor.fetchall()}
+        # V2 store: sessions live in session_v2 and messages in session_message. Project it into
+        # the V1 shape and read that instead, otherwise every agent running a V2 pane is invisible.
+        if "session_message" in tables:
+            v2_rows = cursor.execute("SELECT COUNT(*) AS n FROM session_message").fetchone()[0]
+            v1_rows = cursor.execute("SELECT COUNT(*) AS n FROM message").fetchone()[0] if "message" in tables else 0
+            if v2_rows > v1_rows:
+                conn.close()
+                compat = export_v2_as_v1(sqlite_path)
+                conn = sqlite3.connect(compat)
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                tables = {r["name"] for r in cursor.fetchall()}
         required = {"session", "message", "part"}
         missing = required - tables
         if missing:
@@ -617,7 +742,14 @@ def read_opencode_sqlite(
                         todos = raw_todos
 
             # Token accounting per turn:
-            tokens_input = running_since_compaction
+            reported_ctx = m_data.get("input_tokens")
+            if isinstance(reported_ctx, (int, float)) and reported_ctx > 0:
+                # A provider-reported prompt size beats a text-length estimate: an agent's real
+                # context is what the API billed, including tool schemas and instruction files.
+                running_since_compaction = int(reported_ctx)
+                tokens_input = int(reported_ctx)
+            else:
+                tokens_input = running_since_compaction
             tokens_output = max(1, part_tokens_sum)
             running_cumulative_tokens += tokens_output
             running_since_compaction += tokens_output
